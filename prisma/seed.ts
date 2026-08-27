@@ -364,40 +364,42 @@ async function seedForms() {
 /* ------------------------------ DEMO CONTENT ------------------------------ */
 /* Everything below is illustrative. Replace it from /admin before go-live.   */
 
-// Descriptions start empty on purpose: the admin shows guidance about
-// confirming each relationship before publishing claims about it.
+// Logo files are the official artwork supplied by the school (see
+// public/assets/source for the originals). Descriptions start empty on
+// purpose: the admin shows guidance about confirming each relationship
+// before publishing claims about it.
 const PARTNERS = [
   {
     name: "British Council",
-    logoUrl: "/assets/partners/british-council.svg",
+    logoUrl: "/assets/partners/british-council.png",
     type: "PARTNER",
     description: "",
     website: "",
   },
   {
     name: "IELTS",
-    logoUrl: "/assets/partners/ielts.svg",
+    logoUrl: "/assets/partners/ielts.png",
     type: "CERTIFICATION",
     description: "",
     website: "",
   },
   {
     name: "Manchester City Football School",
-    logoUrl: "/assets/partners/manchester-city.svg",
+    logoUrl: "/assets/partners/manchester-city.png",
     type: "SPONSOR",
     description: "",
     website: "",
   },
   {
     name: "BSC Education",
-    logoUrl: "/assets/partners/bsc-education.svg",
+    logoUrl: "/assets/partners/bsc-education.png",
     type: "PARTNER",
     description: "",
     website: "",
   },
   {
     name: "TOLES Legal",
-    logoUrl: "/assets/partners/toles.svg",
+    logoUrl: "/assets/partners/toles.png",
     type: "CERTIFICATION",
     description: "",
     website: "",

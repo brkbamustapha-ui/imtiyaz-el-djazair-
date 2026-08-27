@@ -132,20 +132,21 @@ dashboard shows a reminder until you turn it off in *Site settings*.
 
 | What | Where it lives | Why |
 | --- | --- | --- |
-| **Partner logos** (British Council, IELTS, Manchester City, TOLES, BSC Education) | `public/assets/partners/*.svg` | These are **typographic placeholders, not the official logos**. Third-party logos are trademarks — upload only artwork you have written permission to display, from *Admin → Partners*. |
+| ~~Partner logos~~ | `public/assets/partners/*.png` | **Done** — the official artwork you supplied is in place (British Council, IELTS, Manchester City, BSC Education, TOLES Legal). Originals kept in `public/assets/source/`. |
 | **Partner relationships** | Admin → Partners | Descriptions start empty on purpose. Only describe a relationship the school has actually confirmed, and tick *relationship confirmed* once you hold it in writing. |
-| **Gallery photos** | `public/assets/gallery/*.webp` | Abstract branded graphics, deliberately non-photographic. Replace with real photos of the campus, classrooms and exam rooms. |
+| **Gallery photos** | `public/assets/gallery/*.webp` | Abstract branded graphics, deliberately non-photographic. Replace with real photos of the campus, classrooms and exam rooms. Seven campus video clips you supplied are in `public/assets/video/` and can be used as a hero background. |
 | **Statistics** | Admin → Statistics | 18 teachers / 2,400 students / 12 courses / 10 years are illustrative figures. |
 | **Testimonials** | Admin → Testimonials | Invented students. Get written permission before publishing a real name or photo. |
 | **News & events** | Admin → News & Events | Marked `TODO(client)` in the article body. |
 | **Contact details** | Admin → Site settings | Address, phone and email are placeholders. |
 | **Privacy Policy / Terms** | Admin → Pages | Placeholder text — have both reviewed for your jurisdiction. |
-| **Logo** | `storage/media/brand/` | **No logo ships with this project and none is drawn in code.** Drop the school's own file in (see §4b) — until you do, the header shows the school name as plain text. |
+| ~~Logo~~ | `public/assets/logo/logo.png` | **Done** — your own logo file is in place, with its flat background made transparent. The original is at `public/assets/source/logo-original.jpg`. Nothing is drawn in code. |
 
-### 4b. Installing the logo
+### 4b. Replacing the logo
 
-The logo is always a real image file supplied by the school. Nothing in this
-codebase reproduces the mark in SVG, CSS or type.
+The logo is always a real image file. Nothing in this codebase reproduces the
+mark in SVG, CSS or type — the current file is the artwork the school supplied,
+with only its flat background removed and the margin trimmed.
 
 Two equivalent ways to install it:
 
@@ -154,8 +155,10 @@ Two equivalent ways to install it:
 2. **Drop the files into `storage/media/brand/`** on the server:
    `logo.svg` (or `.png`/`.webp`), `logo-dark.svg`, `favicon.png`,
    `og-image.png`. They are served immediately at `/media/brand/…` — no rebuild.
+   A file here takes priority over `public/assets/logo/`.
 
-Both routes write to the same place, so either works at any time.
+An SVG would be sharper than the current raster file — worth requesting from
+whoever designed the mark.
 
 ---
 

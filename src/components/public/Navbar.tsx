@@ -50,7 +50,7 @@ export async function Navbar() {
           src={logos.onDark ?? logos.primary}
           siteName={settings.general.siteName}
           tagline={t(settings.general.tagline, locale)}
-          imageClassName="h-10 w-auto md:h-12"
+          imageClassName="h-11 md:h-14"
           priority
         />
       }

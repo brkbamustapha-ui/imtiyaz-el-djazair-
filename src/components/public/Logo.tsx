@@ -29,32 +29,37 @@ export function SiteLogo({
   showWordmark?: boolean;
   priority?: boolean;
 }) {
-  if (src) {
-    return (
-      <span className={cn("flex items-center", className)}>
-        <Image
-          src={src}
-          alt={siteName}
-          width={320}
-          height={96}
-          priority={priority}
-          className={cn("w-auto object-contain", imageClassName)}
-          unoptimized={src.endsWith(".svg")}
-        />
-      </span>
-    );
-  }
-
-  return (
-    <span className={cn("flex flex-col leading-none", className)}>
+  const wordmark = showWordmark ? (
+    <span className="flex flex-col leading-none">
       <span className="font-display text-[0.94rem] font-extrabold uppercase tracking-[0.13em] text-[var(--c-text)] md:text-[1.02rem]">
         {siteName}
       </span>
-      {showWordmark && tagline && (
+      {tagline && (
         <span className="mt-1 text-[0.56rem] font-medium uppercase tracking-[0.26em] text-[var(--c-muted)] md:text-[0.62rem]">
           {tagline}
         </span>
       )}
     </span>
-  );
+  ) : null;
+
+  // The supplied artwork is the mark on its own, so it is paired with the
+  // school's name the same way the school's own signage does.
+  if (src) {
+    return (
+      <span className={cn("flex items-center gap-3", className)}>
+        <Image
+          src={src}
+          alt={siteName}
+          width={320}
+          height={320}
+          priority={priority}
+          className={cn("w-auto shrink-0 object-contain", imageClassName)}
+          unoptimized={src.endsWith(".svg")}
+        />
+        {wordmark}
+      </span>
+    );
+  }
+
+  return <span className={cn("flex flex-col leading-none", className)}>{wordmark}</span>;
 }

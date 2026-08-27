@@ -60,7 +60,7 @@ export async function Footer() {
             src={logos.onDark ?? logos.primary}
             siteName={general.siteName}
             tagline={t(general.tagline, locale)}
-            imageClassName="h-12 w-auto"
+            imageClassName="h-16"
           />
           <p className="mt-5 text-sm leading-relaxed text-[var(--c-muted)]">
             {t(footer.about, locale)}
@@ -170,14 +170,18 @@ function PartnerLogo({
   logoUrl: string;
   website: string;
 }) {
+  // A light plate: most partner artwork is dark-on-transparent and would be
+  // invisible against the footer.
   const image = (
-    <Image
-      src={logoUrl}
-      alt={name}
-      width={150}
-      height={54}
-      className="h-9 w-auto max-w-[140px] object-contain opacity-60 grayscale transition-all duration-500 hover:opacity-100 hover:grayscale-0"
-    />
+    <span className="flex h-14 items-center rounded-[var(--radius-sm)] bg-white px-4 opacity-85 transition-opacity duration-500 hover:opacity-100">
+      <Image
+        src={logoUrl}
+        alt={name}
+        width={150}
+        height={54}
+        className="h-8 w-auto max-w-[140px] object-contain"
+      />
+    </span>
   );
   if (!website) return image;
   return (

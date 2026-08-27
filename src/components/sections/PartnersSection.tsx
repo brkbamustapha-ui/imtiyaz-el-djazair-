@@ -33,14 +33,18 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
         <div className="marquee-mask mt-10 overflow-hidden">
           <div className="marquee-track gap-14">
             {doubled.map((partner, index) => (
-              <Image
+              <span
                 key={`${partner.id}-${index}`}
-                src={partner.logoUrl}
-                alt={partner.name}
-                width={170}
-                height={60}
-                className="h-11 w-auto max-w-[170px] shrink-0 object-contain opacity-55 grayscale transition hover:opacity-100 hover:grayscale-0"
-              />
+                className="flex h-16 shrink-0 items-center rounded-[var(--radius-sm)] bg-white px-5"
+              >
+                <Image
+                  src={partner.logoUrl}
+                  alt={partner.name}
+                  width={170}
+                  height={60}
+                  className="h-10 w-auto max-w-[170px] object-contain"
+                />
+              </span>
             ))}
           </div>
         </div>
@@ -64,14 +68,15 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
           <RevealItem key={partner.id} className="group h-full">
             <TiltCard className="h-full">
               <article className="card card-hover flex h-full flex-col p-7">
-                {/* Neutral plate: keeps both light and dark partner artwork legible. */}
-                <div className="flex h-20 items-center justify-center rounded-[var(--radius-sm)] bg-[rgb(var(--c-text-rgb)/0.04)] px-5">
+                {/* Light plate: partner artwork is mostly dark-on-transparent,
+                    which would disappear against the site's dark surfaces. */}
+                <div className="flex h-24 items-center justify-center rounded-[var(--radius-sm)] bg-white px-6 py-3">
                   <Image
                     src={partner.logoUrl}
                     alt={partner.name}
                     width={220}
                     height={72}
-                    className="max-h-14 w-auto max-w-[200px] object-contain"
+                    className="max-h-16 w-auto max-w-[200px] object-contain"
                   />
                 </div>
                 <div className="mt-5 flex items-center gap-2">

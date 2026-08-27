@@ -1,15 +1,13 @@
 # Partner logo files
 
-The SVG files in this folder are **typographic placeholders**, not the partners'
-official logos. Third-party logos (British Council, IELTS, Manchester City,
-TOLES, BSC Education…) are trademarks: only display artwork the school has
-been given permission to use.
+These PNGs are the **official artwork supplied by the school**. The only
+processing applied was making the flat background of the original files
+transparent and trimming the surrounding margin — proportions, colours, shapes
+and elements are untouched. The originals are kept in `../source/`.
 
-To replace one:
+Because most of this artwork is dark-on-transparent, the site renders partner
+logos on a light plate so they stay legible against the dark theme.
 
-1. Sign in at `/admin`
-2. Go to **Partners**
-3. Open the partner and upload the official file (SVG or transparent PNG)
-
-Nothing here needs to be edited by hand — uploads are stored in
-`/public/uploads/` and referenced from the database.
+To replace or add one: **Admin → Partners**, then upload the file. Only display
+artwork the school has been given permission to use — these are third-party
+trademarks.
