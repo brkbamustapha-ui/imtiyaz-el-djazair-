@@ -47,7 +47,7 @@ export function AdminShell({
   const sidebar = (
     <>
       <div className="flex items-center gap-2.5 border-b border-[var(--a-line)] px-4 py-4">
-        <LogoMark className="h-8 w-auto" />
+        <LogoMark className="h-10 w-auto shrink-0" simple />
         <div className="min-w-0 leading-tight">
           <p className="truncate text-[0.82rem] font-bold">{siteName}</p>
           <p className="text-[0.62rem] uppercase tracking-[0.14em] text-[var(--a-faint)]">

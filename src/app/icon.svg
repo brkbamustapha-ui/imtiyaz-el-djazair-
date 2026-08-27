@@ -1,13 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 194">
-  <defs>
-    <mask id="fp">
-      <rect width="96" height="194" fill="#fff"/>
-      <g fill="none" stroke="#000" stroke-width="3.4" stroke-linecap="round">
-        <circle cx="56" cy="34" r="24.5"/><circle cx="56" cy="34" r="17"/><circle cx="56" cy="34" r="9.5"/>
-      </g>
-    </mask>
-  </defs>
-  <path d="M12 122 H76 A64 64 0 0 1 12 186 Z" fill="#233E72"/>
-  <path d="M12 76 H72 V136 A60 60 0 0 1 12 76 Z" fill="#17AEE0"/>
-  <circle cx="56" cy="34" r="28" fill="#17AEE0" mask="url(#fp)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-56 -6 257 269">
+  <path d="M4 84 H86 V166 A82 82 0 0 1 4 84 Z" fill="#22AEE4"/>
+  <path d="M59 161 H141 V253 A82 82 0 0 1 59 171 Z" fill="#243F77"/>
+  <circle cx="92" cy="42" r="38" fill="#22AEE4"/>
+  <circle cx="92" cy="42" r="21" fill="none" stroke="#fff" stroke-width="7"/>
 </svg>

@@ -55,7 +55,7 @@ export async function Footer() {
       <div className="container-x relative grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.6fr_repeat(3,1fr)] lg:gap-8">
         <div className="max-w-sm">
           <div className="flex items-center gap-3">
-            <LogoMark className="h-11 w-auto" />
+            <LogoMark className="logo-on-surface h-14 w-auto shrink-0" simple />
             <div className="leading-tight">
               <p className="font-display text-base font-extrabold uppercase tracking-[0.12em]">
                 {general.siteName}

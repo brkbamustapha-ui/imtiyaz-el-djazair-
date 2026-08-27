@@ -1,23 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 194" role="img" aria-label="Imtiyaz El Djazair">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 645 216" role="img" aria-label="Imtiyaz El Djazair — School &amp; Exam Center">
   <title>Imtiyaz El Djazair — School &amp; Exam Center</title>
-  <defs>
-    <mask id="fp">
-      <rect x="0" y="0" width="580" height="194" fill="#fff"/>
-      <g fill="none" stroke="#000" stroke-width="3.1" stroke-linecap="round">
-        <circle cx="56" cy="34" r="24.5"/><circle cx="56" cy="34" r="18.5"/>
-        <circle cx="56" cy="34" r="12.5"/><circle cx="56" cy="34" r="6.5"/>
-      </g>
-      <path d="M56 6 L64 18 L58 34 L66 48 L56 62" fill="none" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
-    </mask>
-  </defs>
-  <g>
-    <path d="M12 122 H76 A64 64 0 0 1 12 186 Z" fill="#233E72"/>
-    <path d="M12 76 H72 V136 A60 60 0 0 1 12 76 Z" fill="#17AEE0"/>
-    <circle cx="56" cy="34" r="28" fill="#17AEE0" mask="url(#fp)"/>
+  <g transform="translate(14 6) scale(0.8)">
+    <path d="M4 84 H86 V166 A82 82 0 0 1 4 84 Z" fill="#22AEE4"/>
+    <path d="M59 161 H141 V253 A82 82 0 0 1 59 171 Z" fill="#243F77"/>
+    <g fill="none" stroke="#22AEE4" stroke-width="2.9" stroke-linecap="round">
+      <path d="M75.10 73.79 A36 36 0 1 1 93.26 77.98"/>
+      <path d="M82.36 71.67 A31.2 31.2 0 1 1 96.34 72.90"/>
+      <path d="M75.03 62.22 A26.4 26.4 0 1 1 98.39 67.62"/>
+      <path d="M83.21 61.73 A21.6 21.6 0 1 1 100.09 62.03"/>
+      <path d="M79.52 53.24 A16.8 16.8 0 1 1 100.40 56.55"/>
+      <path d="M86.00 52.39 A12 12 0 1 1 99.39 51.46"/>
+      <path d="M97.35 46.82 A7.2 7.2 0 1 1 86.65 37.18 A3.2 3.2 0 1 1 94.52 43.97"/>
+    </g>
   </g>
-  <g fill="#233E72" font-family="'Sora','Inter','Segoe UI',Helvetica,Arial,sans-serif">
-    <text x="126" y="80" font-size="52" font-weight="700" letter-spacing="1.5">IMTIYAZ</text>
-    <text x="126" y="134" font-size="52" font-weight="700" letter-spacing="1.5">EL DJAZAIR</text>
-    <text x="128" y="162" font-size="18" font-weight="500" letter-spacing="3.4" fill="#4a5b7d">SCHOOL &amp; EXAM CENTER</text>
+  <g font-family="'Sora','Inter','Segoe UI',Helvetica,Arial,sans-serif" fill="#243F77">
+    <text x="152" y="88" font-size="54" font-weight="700" letter-spacing="1.2">IMTIYAZ</text>
+    <text x="152" y="146" font-size="54" font-weight="700" letter-spacing="1.2">EL DJAZAIR</text>
+    <text x="155" y="178" font-size="18.5" font-weight="500" letter-spacing="3.6" fill="#5A6C8C">SCHOOL &amp; EXAM CENTER</text>
   </g>
 </svg>

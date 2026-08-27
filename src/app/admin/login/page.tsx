@@ -19,7 +19,7 @@ export default async function LoginPage({
     <div className="flex min-h-svh items-center justify-center px-4 py-12">
       <div className="w-full max-w-[400px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoMark className="h-14 w-auto" />
+          <LogoMark className="logo-on-bg h-16 w-auto" simple />
           <h1 className="mt-5 text-xl font-bold">Imtiyaz El Djazair</h1>
           <p className="mt-1 text-sm text-[var(--a-muted)]">Sign in to the control panel</p>
         </div>
