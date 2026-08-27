@@ -20,8 +20,6 @@
   --a-success: #34d399;
   --a-warn: #fbbf24;
   --a-danger: #f87171;
-  /* Colour punched through the logo dot; matches the panel the mark sits on. */
-  --logo-dot-cut: var(--a-panel);
   --a-radius: 12px;
   --a-radius-sm: 8px;
   --a-shadow: 0 20px 40px -28px rgb(0 0 0 / 0.85);
@@ -231,7 +229,6 @@
 .a-toggle[data-on="true"]::after { transform: translateX(17px); }
 
 /* --------------------------------- Misc ----------------------------------- */
-.logo-on-bg { --logo-dot-cut: var(--a-bg); }
 .a-divider { height: 1px; background: var(--a-line); }
 .a-empty {
   display: flex;

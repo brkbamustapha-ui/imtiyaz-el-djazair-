@@ -140,7 +140,22 @@ dashboard shows a reminder until you turn it off in *Site settings*.
 | **News & events** | Admin → News & Events | Marked `TODO(client)` in the article body. |
 | **Contact details** | Admin → Site settings | Address, phone and email are placeholders. |
 | **Privacy Policy / Terms** | Admin → Pages | Placeholder text — have both reviewed for your jurisdiction. |
-| **Logo** | `public/assets/logo*.svg` | Reconstructed from the photographs supplied, using the colours sampled from them (`#17AEE0` cyan, `#233E72` navy). Upload the school's official vector artwork when available. |
+| **Logo** | `storage/media/brand/` | **No logo ships with this project and none is drawn in code.** Drop the school's own file in (see §4b) — until you do, the header shows the school name as plain text. |
+
+### 4b. Installing the logo
+
+The logo is always a real image file supplied by the school. Nothing in this
+codebase reproduces the mark in SVG, CSS or type.
+
+Two equivalent ways to install it:
+
+1. **Admin → Site settings → Branding** — upload `Logo`, and optionally a
+   light-coloured `Logo for dark backgrounds`, a `Favicon` and a share image.
+2. **Drop the files into `storage/media/brand/`** on the server:
+   `logo.svg` (or `.png`/`.webp`), `logo-dark.svg`, `favicon.png`,
+   `og-image.png`. They are served immediately at `/media/brand/…` — no rebuild.
+
+Both routes write to the same place, so either works at any time.
 
 ---
 
@@ -230,15 +245,21 @@ changes:
 ### Hosting
 
 The app needs a **Node.js runtime** (not a static export) and a **writable disk**
-for `public/uploads` and `storage/submissions`.
+for `storage/` (media uploads, brand artwork and form attachments).
 
 - **A VPS / container** is the simplest fit: `npm ci && npm run build && npm start`
-  behind Nginx or Caddy for TLS. Keep `public/uploads` and `storage` on a
-  persistent volume and include them in your backups along with the database.
+  behind Nginx or Caddy for TLS. Keep the whole `storage/` directory on a
+  persistent volume and include it in your backups along with the database.
 - **Vercel and similar serverless hosts** have an ephemeral filesystem, so
   uploads would not survive. Point `saveUpload` / `savePrivateUpload` in
   `src/lib/upload.ts` at object storage (S3, R2, Supabase Storage) before
   deploying there, and use a hosted PostgreSQL database.
+
+> **Why uploads do not live in `/public`.** `next start` serves that directory
+> from a manifest built at compile time, so a file written after the build is
+> never reachable. Runtime media is stored under `storage/media/` and streamed
+> by the `/media/[...path]` route handler, which sets `nosniff`, an inline
+> disposition and immutable caching, and rejects path traversal.
 
 The in-memory rate limiter is per-instance. Behind more than one instance, back
 `src/lib/rate-limit.ts` with a shared store (Redis/Upstash); the persisted
@@ -255,7 +276,9 @@ prisma/
 public/
   assets/                logo, partner placeholders, demo gallery, OG image
   uploads/               media uploaded from the admin (git-ignored)
-storage/submissions/     form attachments, never publicly served (git-ignored)
+storage/
+  media/                 Media Library uploads + brand artwork, served by /media
+  submissions/           form attachments, never publicly served
 src/
   app/
     (site)/              public website
@@ -294,5 +317,7 @@ src/
   random per-browser id. No third-party tracker, no personal data.
 - **News articles are single-language** (one article per language, by design).
   Sections, collections, menus, footer and settings are fully translatable.
-- **Uploads are local files.** Move them to object storage before deploying to a
-  serverless host (see section 7).
+- **Uploads are local files** under `storage/`. Move them to object storage
+  before deploying to a serverless host (see section 7).
+- **No logo is bundled.** The project deliberately ships without one rather than
+  approximating the school's mark; see §4b.

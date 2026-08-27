@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ResetPasswordForm } from "@/components/admin/PasswordForms";
-import { LogoMark } from "@/components/public/Logo";
 
 export const metadata: Metadata = { title: "Set a new password" };
 
@@ -16,7 +15,6 @@ export default async function ResetPasswordPage({
     <div className="flex min-h-svh items-center justify-center px-4 py-12">
       <div className="w-full max-w-[400px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoMark className="logo-on-bg h-14 w-auto" simple />
           <h1 className="mt-5 text-lg font-bold">Choose a new password</h1>
         </div>
         <div className="a-card a-card-pad">

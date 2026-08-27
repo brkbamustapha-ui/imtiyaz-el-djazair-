@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "@/components/admin/LoginForm";
-import { LogoMark } from "@/components/public/Logo";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -19,7 +18,6 @@ export default async function LoginPage({
     <div className="flex min-h-svh items-center justify-center px-4 py-12">
       <div className="w-full max-w-[400px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoMark className="logo-on-bg h-16 w-auto" simple />
           <h1 className="mt-5 text-xl font-bold">Imtiyaz El Djazair</h1>
           <p className="mt-1 text-sm text-[var(--a-muted)]">Sign in to the control panel</p>
         </div>

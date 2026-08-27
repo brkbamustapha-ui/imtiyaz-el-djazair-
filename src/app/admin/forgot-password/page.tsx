@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ForgotPasswordForm } from "@/components/admin/PasswordForms";
-import { LogoMark } from "@/components/public/Logo";
 
 export const metadata: Metadata = { title: "Forgot password" };
 
@@ -10,7 +9,6 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-svh items-center justify-center px-4 py-12">
       <div className="w-full max-w-[400px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoMark className="logo-on-bg h-14 w-auto" simple />
           <h1 className="mt-5 text-lg font-bold">Reset your password</h1>
           <p className="mt-1.5 text-sm text-[var(--a-muted)]">
             Enter the email address you use to sign in.

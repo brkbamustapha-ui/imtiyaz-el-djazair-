@@ -4,7 +4,8 @@ import { getEnabledLocales, getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { lt } from "@/lib/localized-field";
 import type { MenuNode } from "@/server/content";
-import { Logo } from "./Logo";
+import { SiteLogo } from "./Logo";
+import { getBrandLogos } from "@/lib/brand";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { NavbarClient } from "./NavbarClient";
 
@@ -19,11 +20,12 @@ const FALLBACK_MENU = [
 ];
 
 export async function Navbar() {
-  const [menu, settings, locale, locales] = await Promise.all([
+  const [menu, settings, locale, locales, logos] = await Promise.all([
     getMenu("header"),
     getAllSettings(),
     getLocale(),
     getEnabledLocales(),
+    getBrandLogos(),
   ]);
 
   // Menu labels are stored as localized JSON; resolve them for this language.
@@ -44,10 +46,12 @@ export async function Navbar() {
       ctaLabel={ctaLabel}
       ctaHref={ctaHref}
       logo={
-        <Logo
+        <SiteLogo
+          src={logos.onDark ?? logos.primary}
           siteName={settings.general.siteName}
           tagline={t(settings.general.tagline, locale)}
-          logoUrl={settings.general.logoUrl}
+          imageClassName="h-10 w-auto md:h-12"
+          priority
         />
       }
       localeSwitcher={<LocaleSwitcher locales={locales} current={locale} />}

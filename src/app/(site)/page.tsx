@@ -4,6 +4,7 @@ import { SectionRenderer } from "@/components/sections/SectionRenderer";
 import { JsonLd } from "@/components/public/JsonLd";
 import { getPageMeta, getPageSections } from "@/server/content";
 import { getAllSettings } from "@/lib/settings";
+import { getBrandLogos } from "@/lib/brand";
 import { getLocale } from "@/lib/locale";
 import { metadataFromPageSeo, parsePageSeo, siteUrl } from "@/lib/seo";
 import { t } from "@/lib/i18n";
@@ -18,10 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [sections, settings, locale] = await Promise.all([
+  const [sections, settings, locale, logos] = await Promise.all([
     getPageSections("home"),
     getAllSettings(),
     getLocale(),
+    getBrandLogos(),
   ]);
 
   if (!sections) notFound();
@@ -40,8 +42,8 @@ export default async function HomePage() {
             alternateName: t(general.tagline, locale),
             description: seo.defaultDescription,
             url: siteUrl("/"),
-            logo: siteUrl(general.logoUrl),
-            image: siteUrl(general.ogImageUrl),
+            logo: logos.primary ? siteUrl(logos.primary) : undefined,
+            image: siteUrl(logos.ogImage ?? "/assets/social-card.png"),
             email: contact.email || undefined,
             telephone: contact.phonePrimary || undefined,
             sameAs: socialLinks.length > 0 ? socialLinks : undefined,

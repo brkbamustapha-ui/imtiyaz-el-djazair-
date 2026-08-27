@@ -14,6 +14,8 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scrypt as scryptCb } from "node:crypto";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { promisify } from "node:util";
 import { DEFAULT_SETTINGS } from "../src/lib/settings-schema";
 import { defaultsForType } from "../src/lib/section-types";
@@ -73,6 +75,43 @@ async function seedSuperAdmin() {
     },
   });
   console.log(`✓ Super Admin created: ${email} (you must change the password at first login)`);
+}
+
+/**
+ * Clears stored logo/favicon/share-image paths that no longer point at a real
+ * file, so the site falls back to plain text instead of a broken image.
+ * Runs on every seed, which makes upgrades from an older build self-healing.
+ */
+async function normaliseBrandPaths() {
+  const row = await db.siteSetting.findUnique({ where: { key: "general" } });
+  if (!row) return;
+
+  const value = JSON.parse(row.valueJson) as Record<string, unknown>;
+  const fields = ["logoUrl", "logoDarkUrl", "faviconUrl", "ogImageUrl"];
+  let changed = false;
+
+  for (const field of fields) {
+    const url = typeof value[field] === "string" ? (value[field] as string) : "";
+    if (url === "") continue;
+
+    // Runtime media lives outside /public and is checked on disk directly.
+    const onDisk = url.startsWith("/media/")
+      ? path.join(process.cwd(), "storage", "media", url.slice("/media/".length))
+      : path.join(process.cwd(), "public", url);
+
+    if (!existsSync(onDisk)) {
+      value[field] = "";
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    await db.siteSetting.update({
+      where: { key: "general" },
+      data: { valueJson: JSON.stringify(value) },
+    });
+    console.log("✓ Cleared logo/share-image paths that pointed at missing files");
+  }
 }
 
 async function seedSettings() {
@@ -637,6 +676,7 @@ async function main() {
   console.log("\nSeeding Imtiyaz El Djazair…\n");
   await seedSuperAdmin();
   await seedSettings();
+  await normaliseBrandPaths();
   await seedMenu();
   await seedPages();
   await seedForms();

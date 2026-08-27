@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [{ protocol: "https", hostname: "**" }],
+    // Runtime media is served by the /media route handler, not from /public.
+    localPatterns: [
+      { pathname: "/media/**" },
+      { pathname: "/assets/**" },
+    ],
   },
   experimental: {
     optimizePackageImports: ["framer-motion"],
@@ -31,13 +36,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
-      // Uploaded media is user content: never let the browser sniff it into a script.
+      // Uploaded media is user content: never let the browser sniff it into a
+      // script. (The /media route sets these itself; this covers the optimiser.)
       {
-        source: "/uploads/:path*",
+        source: "/media/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Content-Disposition", value: "inline" },
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

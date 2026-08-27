@@ -32,8 +32,6 @@
   --font-heading: "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
   --header-h: 76px;
-  /* Colour punched through the logo dot — must match the surface behind it. */
-  --logo-dot-cut: var(--c-bg);
 }
 
 @theme inline {
@@ -163,7 +161,6 @@ h1, h2, h3, h4, h5, h6, .font-display {
   border-color: color-mix(in srgb, var(--c-primary) 45%, var(--c-border));
   box-shadow: 0 32px 64px -36px rgb(var(--c-primary-rgb) / calc(var(--shadow-strength) * 0.8));
 }
-.logo-on-surface { --logo-dot-cut: var(--c-surface); }
 .hairline { border-top: 1px solid color-mix(in srgb, var(--c-border) 70%, transparent); }
 
 /* --------------------------------- Buttons -------------------------------- */

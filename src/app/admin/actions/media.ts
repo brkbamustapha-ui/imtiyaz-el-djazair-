@@ -6,15 +6,15 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
+import { MEDIA_ROOT } from "@/lib/upload";
 import { fail, ok, type ActionResult } from "./_helpers";
 
-/** Only ever unlink inside public/uploads, whatever the stored URL says. */
+/** Only ever unlink inside the media root, whatever the stored URL says. */
 async function removeFile(url: string) {
-  if (!url.startsWith("/uploads/")) return;
-  const uploadsRoot = path.join(process.cwd(), "public", "uploads");
-  const target = path.join(process.cwd(), "public", url);
-  const resolved = path.resolve(target);
-  if (!resolved.startsWith(path.resolve(uploadsRoot) + path.sep)) return;
+  if (!url.startsWith("/media/")) return;
+  const root = path.resolve(MEDIA_ROOT);
+  const resolved = path.resolve(root, url.slice("/media/".length));
+  if (!resolved.startsWith(root + path.sep)) return;
   await unlink(resolved).catch(() => undefined);
 }
 

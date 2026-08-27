@@ -1,14 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { getAllSettings } from "@/lib/settings";
+import { getBrandLogos } from "@/lib/brand";
 import { appearanceToCssVars, googleFontsHref } from "@/lib/theme";
 import { getLocale } from "@/lib/locale";
 import { LOCALE_META } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { seo, general } = await getAllSettings();
+  const [{ seo, general }, logos] = await Promise.all([getAllSettings(), getBrandLogos()]);
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const shareImage = logos.ogImage ?? "/assets/social-card.png";
   return {
     metadataBase: new URL(base),
     title: {
@@ -18,24 +20,22 @@ export async function generateMetadata(): Promise<Metadata> {
     description: seo.defaultDescription,
     applicationName: general.siteName,
     keywords: seo.keywords,
-    icons: {
-      icon: [{ url: general.faviconUrl || "/assets/favicon.svg", type: "image/svg+xml" }],
-      apple: general.faviconUrl || "/assets/favicon.svg",
-    },
+    // Only ever the school's own file — no generated icon is shipped.
+    icons: logos.favicon ? { icon: [{ url: logos.favicon }], apple: logos.favicon } : undefined,
     openGraph: {
       type: "website",
       siteName: general.siteName,
       title: seo.defaultTitle,
       description: seo.defaultDescription,
       url: base,
-      images: [{ url: general.ogImageUrl || "/assets/og-image.png", width: 1200, height: 630, alt: general.siteName }],
+      images: [{ url: shareImage, width: 1200, height: 630, alt: general.siteName }],
     },
     twitter: {
       card: "summary_large_image",
       title: seo.defaultTitle,
       description: seo.defaultDescription,
       site: seo.twitterHandle || undefined,
-      images: [general.ogImageUrl || "/assets/og-image.png"],
+      images: [shareImage],
     },
     robots: seo.robotsIndex
       ? { index: true, follow: true }

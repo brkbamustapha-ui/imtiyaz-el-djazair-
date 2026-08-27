@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getPostBySlug, getPosts } from "@/server/content";
 import { getLocale } from "@/lib/locale";
 import { getAllSettings } from "@/lib/settings";
+import { getBrandLogos } from "@/lib/brand";
 import { JsonLd } from "@/components/public/JsonLd";
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
@@ -28,10 +29,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
-  const [post, locale, settings] = await Promise.all([
+  const [post, locale, settings, logos] = await Promise.all([
     getPostBySlug(slug),
     getLocale(),
     getAllSettings(),
+    getBrandLogos(),
   ]);
   if (!post) notFound();
 
@@ -46,7 +48,7 @@ export default async function PostPage({ params }: Props) {
           "@type": post.type === "EVENT" ? "Event" : "NewsArticle",
           headline: post.title,
           description: post.excerpt,
-          image: post.coverUrl ? siteUrl(post.coverUrl) : siteUrl(settings.general.ogImageUrl),
+          image: siteUrl(post.coverUrl || logos.ogImage || "/assets/social-card.png"),
           datePublished: publishedAt.toISOString(),
           dateModified: post.updatedAt.toISOString(),
           ...(post.type === "EVENT"
@@ -62,7 +64,9 @@ export default async function PostPage({ params }: Props) {
                 publisher: {
                   "@type": "Organization",
                   name: settings.general.siteName,
-                  logo: { "@type": "ImageObject", url: siteUrl(settings.general.logoUrl) },
+                  logo: logos.primary
+                    ? { "@type": "ImageObject", url: siteUrl(logos.primary) }
+                    : undefined,
                 },
               }),
           mainEntityOfPage: siteUrl(`/news/${post.slug}`),

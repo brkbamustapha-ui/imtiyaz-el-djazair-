@@ -45,18 +45,24 @@ export function MediaField({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [broken, setBroken] = useState(false);
+
+  // A stored path can outlive the file it pointed at; show that plainly rather
+  // than rendering a broken image.
+  useEffect(() => setBroken(false), [value]);
 
   return (
     <>
       <div className="flex items-center gap-3">
         <div className="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[var(--a-radius-sm)] border border-[var(--a-line)] bg-[var(--a-panel-2)]">
-          {value ? (
-            kind === "video" ? (
-              <Icon name="image" size={18} />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={value} alt="" className="h-full w-full object-contain" />
-            )
+          {value && !broken && kind !== "video" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt=""
+              className="h-full w-full object-contain"
+              onError={() => setBroken(true)}
+            />
           ) : (
             <Icon name="image" size={18} className="text-[var(--a-faint)]" />
           )}
@@ -73,7 +79,14 @@ export function MediaField({
               </button>
             )}
           </div>
-          {value && <p className="a-help a-mono mt-1.5 truncate">{value}</p>}
+          {value && (
+            <p className="a-help a-mono mt-1.5 truncate">
+              {value}
+              {broken && (
+                <span className="ms-1 font-sans text-[var(--a-warn)]">— file not found</span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { LogoMark } from "@/components/public/Logo";
 import { NAV_GROUPS } from "./nav-config";
 import { can, ROLE_LABELS, type Role } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -15,12 +14,15 @@ export function AdminShell({
   children,
   user,
   siteName,
+  logoUrl,
   initialTheme,
   unreadMessages,
 }: {
   children: ReactNode;
   user: { name: string; email: string; role: Role };
   siteName: string;
+  /** The school's own logo file, when one has been supplied. */
+  logoUrl: string | null;
   initialTheme: "dark" | "light";
   unreadMessages: number;
 }) {
@@ -47,7 +49,10 @@ export function AdminShell({
   const sidebar = (
     <>
       <div className="flex items-center gap-2.5 border-b border-[var(--a-line)] px-4 py-4">
-        <LogoMark className="h-10 w-auto shrink-0" simple />
+        {logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" className="h-9 w-auto max-w-[92px] shrink-0 object-contain" />
+        )}
         <div className="min-w-0 leading-tight">
           <p className="truncate text-[0.82rem] font-bold">{siteName}</p>
           <p className="text-[0.62rem] uppercase tracking-[0.14em] text-[var(--a-faint)]">

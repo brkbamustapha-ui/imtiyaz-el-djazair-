@@ -32,9 +32,12 @@ yarn-error.log*
 /prisma/*.db-journal
 /prisma/dev.db*
 
-# user uploads (managed via the admin Media Library at runtime)
-/public/uploads/*
-!/public/uploads/.gitkeep
+# runtime media: Media Library uploads and brand artwork dropped in after build
+/storage/media/*
+!/storage/media/.gitkeep
+!/storage/media/brand
+/storage/media/brand/*
+!/storage/media/brand/README.md
 
 # typescript
 *.tsbuildinfo

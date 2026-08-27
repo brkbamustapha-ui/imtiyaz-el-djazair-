@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/public/Logo";
 
 export default function NotFound() {
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-6 px-6 text-center">
-      <LogoMark className="h-20 w-auto opacity-80" simple />
       <p className="font-display text-6xl font-black text-[var(--c-accent)]">404</p>
       <h1 className="h2 max-w-md text-balance">This page could not be found</h1>
       <p className="lead max-w-md">

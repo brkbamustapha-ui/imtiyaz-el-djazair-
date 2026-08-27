@@ -4,6 +4,9 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import sharp from "sharp";
 
+/** Runtime-writable media root, served through the /media route handler. */
+export const MEDIA_ROOT = path.join(process.cwd(), "storage", "media");
+
 export const IMAGE_MIME = [
   "image/png",
   "image/jpeg",
@@ -142,7 +145,9 @@ export async function saveUpload(
   const safeFolder = folder.replace(/[^a-z0-9-_]/gi, "").slice(0, 40) || "general";
   const extension = EXTENSION_BY_MIME[mimeType] ?? "";
   const filename = `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}${extension}`;
-  const directory = path.join(process.cwd(), "public", "uploads", safeFolder);
+  // NOT /public: `next start` serves that directory from a build-time manifest,
+  // so a file written at runtime would never be reachable. See app/media/[...path].
+  const directory = path.join(MEDIA_ROOT, safeFolder);
 
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, filename), buffer);
@@ -151,7 +156,7 @@ export async function saveUpload(
     ok: true,
     file: {
       filename,
-      url: `/uploads/${safeFolder}/${filename}`,
+      url: `/media/${safeFolder}/${filename}`,
       mimeType,
       size: buffer.length,
       width,

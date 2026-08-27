@@ -6,7 +6,8 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { Icon } from "@/components/ui/Icon";
 import { safeHref } from "@/lib/utils";
-import { LogoMark } from "./Logo";
+import { SiteLogo } from "./Logo";
+import { getBrandLogos } from "@/lib/brand";
 
 const SOCIAL_FIELDS = [
   { key: "facebook", icon: "facebook", label: "Facebook" },
@@ -19,10 +20,11 @@ const SOCIAL_FIELDS = [
 ] as const;
 
 export async function Footer() {
-  const [settings, locale, partners] = await Promise.all([
+  const [settings, locale, partners, logos] = await Promise.all([
     getAllSettings(),
     getLocale(),
     getActivePartners(),
+    getBrandLogos(),
   ]);
   const { footer, general, contact, social } = settings;
 
@@ -54,17 +56,12 @@ export async function Footer() {
 
       <div className="container-x relative grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.6fr_repeat(3,1fr)] lg:gap-8">
         <div className="max-w-sm">
-          <div className="flex items-center gap-3">
-            <LogoMark className="logo-on-surface h-14 w-auto shrink-0" simple />
-            <div className="leading-tight">
-              <p className="font-display text-base font-extrabold uppercase tracking-[0.12em]">
-                {general.siteName}
-              </p>
-              <p className="mt-1 text-[0.62rem] font-medium uppercase tracking-[0.24em] text-[var(--c-muted)]">
-                {t(general.tagline, locale)}
-              </p>
-            </div>
-          </div>
+          <SiteLogo
+            src={logos.onDark ?? logos.primary}
+            siteName={general.siteName}
+            tagline={t(general.tagline, locale)}
+            imageClassName="h-12 w-auto"
+          />
           <p className="mt-5 text-sm leading-relaxed text-[var(--c-muted)]">
             {t(footer.about, locale)}
           </p>
