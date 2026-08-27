@@ -16,6 +16,18 @@ without touching the code.
 
 ## 1. Quick start
 
+**One command** — checks Node, installs, writes `.env`, creates the database,
+finds a free port and starts the server:
+
+```bash
+bash start.sh
+```
+
+It prints the URL to open. Re-running it is safe: it never overwrites a value
+you have already set, and it falls back to 3001/3002/5173 when 3000 is busy.
+
+Or step by step:
+
 ```bash
 npm install
 cp .env.example .env          # then edit .env — see section 2
