@@ -37,12 +37,8 @@ export type ContactSettings = {
 };
 
 export type SocialSettings = {
-  facebook: string;
   instagram: string;
-  linkedin: string;
-  youtube: string;
   tiktok: string;
-  x: string;
   whatsapp: string;
 };
 
@@ -243,14 +239,12 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     ],
   },
   social: {
-    // Accounts the school confirmed. The rest stay empty: an empty field simply
-    // hides its icon, so nothing links to an account that does not exist.
-    facebook: "",
+    // Only the networks the school actually uses. Facebook, YouTube, LinkedIn
+    // and X were removed at the owner's request — the school has no presence
+    // there, and a dashboard field for an account that will never exist is
+    // just a place to make a mistake.
     instagram: "https://www.instagram.com/imtiyaz_el_djazair_officiel",
-    linkedin: "",
-    youtube: "",
     tiktok: "https://www.tiktok.com/@imtiyazaldjazair",
-    x: "",
     whatsapp: "",
   },
   appearance: {

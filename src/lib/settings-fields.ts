@@ -59,12 +59,8 @@ export const CONTACT_FIELDS: Field[] = [
 ];
 
 export const SOCIAL_FIELDS: Field[] = [
-  { name: "facebook", label: "Facebook", type: "link" },
   { name: "instagram", label: "Instagram", type: "link" },
-  { name: "linkedin", label: "LinkedIn", type: "link" },
-  { name: "youtube", label: "YouTube", type: "link" },
   { name: "tiktok", label: "TikTok", type: "link" },
-  { name: "x", label: "X", type: "link" },
   { name: "whatsapp", label: "WhatsApp", type: "link", help: "e.g. https://wa.me/213000000000" },
 ];
 

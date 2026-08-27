@@ -49,9 +49,6 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
     [
       ["instagram", social.instagram, "Instagram"],
       ["tiktok", social.tiktok, "TikTok"],
-      ["facebook", social.facebook, "Facebook"],
-      ["youtube", social.youtube, "YouTube"],
-      ["linkedin", social.linkedin, "LinkedIn"],
       ["whatsapp", social.whatsapp, "WhatsApp"],
       [
         "pin",

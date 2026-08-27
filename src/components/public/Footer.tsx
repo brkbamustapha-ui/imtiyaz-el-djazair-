@@ -10,12 +10,8 @@ import { SiteLogo } from "./Logo";
 import { getBrandLogos } from "@/lib/brand";
 
 const SOCIAL_FIELDS = [
-  { key: "facebook", icon: "facebook", label: "Facebook" },
   { key: "instagram", icon: "instagram", label: "Instagram" },
-  { key: "linkedin", icon: "linkedin", label: "LinkedIn" },
-  { key: "youtube", icon: "youtube", label: "YouTube" },
   { key: "tiktok", icon: "tiktok", label: "TikTok" },
-  { key: "x", icon: "x", label: "X" },
   { key: "whatsapp", icon: "whatsapp", label: "WhatsApp" },
 ] as const;
 

@@ -93,7 +93,7 @@ database and edited from the dashboard.
 | Partner and sponsor logos | **Partners & Logos** |
 | Images, videos, PDFs | **Media Library** |
 | Contact details, address, phone, email, opening hours, map | **Site settings** |
-| Social media links | **Site settings** |
+| Social media links (Instagram, TikTok, WhatsApp) | **Site settings** |
 | Logo, favicon, share image, site name, tagline | **Site settings** |
 | Languages offered and the default language | **Site settings** → Languages |
 | Colours, fonts, radius, shadows, animation speed, 3D intensity | **Appearance** |
@@ -140,7 +140,7 @@ dashboard shows a reminder until you turn it off in *Site settings*.
 | **Testimonials** | Admin → Testimonials | Invented students. Get written permission before publishing a real name or photo. |
 | **News & events** | Admin → News & Events | Marked `TODO(client)` in the article body. |
 | **Contact details** | Admin → Site settings | Address, phone and email are still placeholders. The map pin is real, so the street address is the one thing left that does not match it — worth fixing first. |
-| ~~Instagram, TikTok, map pin~~ | Admin → Site settings | **Done** — the school's own accounts and Google Maps pin are wired in and show as icons in the footer of every page and on the contact page. The other social fields (Facebook, YouTube, LinkedIn, X, WhatsApp) are left empty on purpose: an empty field hides its icon, so nothing links to an account that does not exist. Fill one in and its icon appears. |
+| ~~Instagram, TikTok, map pin~~ | Admin → Site settings | **Done** — the school's own accounts and Google Maps pin are wired in and show as icons in the footer of every page and on the contact page. Facebook, YouTube, LinkedIn and X were removed at the owner's request: the school has no presence there, so the fields are gone from the dashboard and the icons from the site. WhatsApp is still offered and is empty — an empty field hides its icon, so nothing links to an account that does not exist. |
 | **Privacy Policy / Terms** | Admin → Pages | Placeholder text — have both reviewed for your jurisdiction. |
 | ~~Logo~~ | `public/assets/logo/logo.png` | **Done** — your own logo file is in place, with its flat background made transparent. The original is at `public/assets/source/logo-original.jpg`. Nothing is drawn in code. |
 

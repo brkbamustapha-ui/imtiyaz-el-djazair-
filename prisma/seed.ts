@@ -152,6 +152,32 @@ async function backfillContactLinks() {
   if (filled.length > 0) console.log(`✓ Filled empty contact links: ${filled.join(", ")}`);
 }
 
+/**
+ * Drop social networks that are no longer offered.
+ *
+ * Settings are read as `{ ...defaults, ...stored }`, so a key left behind in an
+ * older row survives the merge even after it is gone from the schema. Nothing
+ * renders it any more, but leaving a stale URL sitting in the database is how a
+ * removed account quietly comes back. Only fields absent from the current
+ * schema are removed; everything the schema still knows about is untouched.
+ */
+async function pruneRemovedSocialFields() {
+  const row = await db.siteSetting.findUnique({ where: { key: "social" } });
+  if (!row) return;
+
+  const stored = JSON.parse(row.valueJson) as Record<string, unknown>;
+  const allowed = new Set(Object.keys(DEFAULT_SETTINGS.social));
+  const stale = Object.keys(stored).filter((field) => !allowed.has(field));
+  if (stale.length === 0) return;
+
+  for (const field of stale) delete stored[field];
+  await db.siteSetting.update({
+    where: { key: "social" },
+    data: { valueJson: JSON.stringify(stored) },
+  });
+  console.log(`✓ Removed social networks no longer offered: ${stale.join(", ")}`);
+}
+
 async function seedSettings() {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const existing = await db.siteSetting.findUnique({ where: { key } });
@@ -810,6 +836,7 @@ async function main() {
   await seedSuperAdmin();
   await seedSettings();
   await backfillContactLinks();
+  await pruneRemovedSocialFields();
   await normaliseBrandPaths();
   await seedMenu();
   await seedPages();
