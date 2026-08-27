@@ -186,6 +186,28 @@ whoever designed the mark.
 
 ## 5. Security
 
+### Dependency advisories
+
+`npm audit` reports 5 findings. None is reachable from the internet, and the
+list below is the reasoning, not a dismissal — re-check it before each deploy,
+because a build-time-only issue stops being harmless the day something starts
+feeding it untrusted input.
+
+| Package | Where it runs | Why it is not exposed |
+| --- | --- | --- |
+| `prisma`, `@prisma/config`, `deepmerge-ts` | CLI only, at build and migration time | `@prisma/client` — the part that serves requests — is not affected. npm proposes "prisma@6.12.0", which is a **downgrade**; taking it would lose 7 releases of fixes to remove a stack-exhaustion bug in a config loader that only ever reads your own `schema.prisma`. |
+| `postcss` (8.4.31, nested inside `next`) | Build time, on this project's own CSS | Never invoked at runtime. Its worst finding — XSS through an unescaped `</style>` — is separately blocked in the one place user-supplied CSS reaches the page: Admin → Advanced strips `<style`/`</style`/`<script` both when saving and again when rendering, and the field is Super Admin only. Fixing the advisory needs Next 16, a major upgrade. |
+| `next` (moderate) | — | Also needs Next 16. |
+
+Fixed on 15.5.24: the **critical** RCE in the React flight protocol, the Server
+Actions source-code exposure, and the Server Components denial of service — all
+three directly relevant, since the whole dashboard is built on Server Actions.
+`sharp` was raised to 0.35.4 in the same pass: it decodes **uploaded** images,
+which makes its libvips CVEs the only ones an outsider could have reached.
+
+Pin these versions when you deploy; do not let a floating range pull an
+unpatched build.
+
 - **Passwords** — scrypt with a per-user salt (`scrypt$salt$hash`). Never stored
   in clear text, returned to the browser, or logged.
 - **Sessions** — opaque random token in an `HttpOnly`, `SameSite=Lax`,

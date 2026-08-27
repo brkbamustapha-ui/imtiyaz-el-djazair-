@@ -29,15 +29,19 @@ export type StoredBlob = { data: Uint8Array; mimeType: string; size: number };
 
 export async function putFile(
   key: string,
-  data: Buffer,
+  data: Buffer | Uint8Array,
   mimeType: string,
   isPrivate = false,
 ): Promise<void> {
   if (!isValidKey(key)) throw new Error(`Refusing to store an invalid key: ${key}`);
+  // Prisma's Bytes column wants a Uint8Array over a plain ArrayBuffer. A Node
+  // Buffer can sit on a SharedArrayBuffer, which that type rejects, so copy it
+  // into a fresh one rather than casting the difference away.
+  const bytes = new Uint8Array(data);
   await db.storedFile.upsert({
     where: { key },
-    create: { key, data, mimeType, size: data.length, isPrivate },
-    update: { data, mimeType, size: data.length, isPrivate },
+    create: { key, data: bytes, mimeType, size: bytes.length, isPrivate },
+    update: { data: bytes, mimeType, size: bytes.length, isPrivate },
   });
 }
 
