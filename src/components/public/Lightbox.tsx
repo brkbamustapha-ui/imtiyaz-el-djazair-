@@ -46,14 +46,16 @@ export function GalleryGrid({ images }: { images: LightboxImage[] }) {
     <>
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {images.map((image, position) => (
-          <li key={image.id} className={position % 7 === 0 ? "sm:col-span-2 sm:row-span-2" : ""}>
+          <li key={image.id}>
             <button
               type="button"
               onClick={() => setIndex(position)}
               className="group relative block h-full w-full overflow-hidden rounded-[var(--radius-sm)] border border-[var(--c-border)]"
               aria-label={`${image.title || image.album} — open larger view`}
             >
-              <span className={position % 7 === 0 ? "block aspect-square" : "block aspect-[4/3]"}>
+              {/* One uniform, slightly upright tile: the school's photographs are
+                  portrait, and a landscape grid cropped the tops off them. */}
+              <span className="block aspect-[4/5]">
                 <Image
                   src={image.url}
                   alt={image.title || image.album}
@@ -115,12 +117,17 @@ export function GalleryGrid({ images }: { images: LightboxImage[] }) {
               className="relative max-h-[86vh] w-full max-w-5xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="relative aspect-[3/2] w-full">
+              {/* object-contain inside a tall frame: portrait photographs are
+                  shown whole and are never scaled past their real resolution.
+                  The frame is capped at max-w-5xl, so `sizes` tops out at 1024px
+                  rather than 90vw — a wide monitor would otherwise fetch a 1920px
+                  variant to paint an image this frame can never show that large. */}
+              <div className="relative mx-auto h-[72vh] w-full">
                 <Image
                   src={active.url}
                   alt={active.title || active.album}
                   fill
-                  sizes="90vw"
+                  sizes="(max-width: 1024px) 92vw, 1024px"
                   className="rounded-[var(--radius)] object-contain"
                 />
               </div>

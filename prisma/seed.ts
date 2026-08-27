@@ -169,7 +169,11 @@ const PAGES: PageSpec[] = [
     sections: [
       { type: "hero", name: "Hero" },
       { type: "partners", name: "Partners & Accreditations", overrides: { layout: "cards" } },
-      { type: "about", name: "About the school" },
+      {
+        type: "about",
+        name: "About the school",
+        overrides: { image: "/assets/photos/reception-01.webp" },
+      },
       {
         type: "videoGallery",
         name: "Inside the school",
@@ -240,9 +244,13 @@ const PAGES: PageSpec[] = [
       { type: "services", name: "What we offer" },
       { type: "ielts", name: "IELTS journey" },
       { type: "stats", name: "Key figures" },
-      { type: "examCenter", name: "Exam Center" },
+      {
+        type: "examCenter",
+        name: "Exam Center",
+        overrides: { image: "/assets/photos/exam-room-02.webp" },
+      },
       { type: "valueCards", name: "Mission, vision, approach" },
-      { type: "gallery", name: "Campus gallery" },
+      { type: "gallery", name: "Campus gallery", overrides: { limit: 24 } },
       { type: "videoGallery", name: "Summer Camp", overrides: { tone: "default" } },
       { type: "testimonials", name: "Student testimonials" },
       { type: "news", name: "Latest news" },
@@ -307,7 +315,11 @@ const PAGES: PageSpec[] = [
     sections: [
       { type: "ielts", name: "IELTS journey" },
       { type: "steps", name: "From first contact to results" },
-      { type: "examCenter", name: "Exam Center" },
+      {
+        type: "examCenter",
+        name: "Exam Center",
+        overrides: { image: "/assets/photos/exam-room-02.webp" },
+      },
       { type: "testimonials", name: "Testimonials" },
       { type: "faq", name: "FAQ" },
       { type: "cta", name: "Call to action" },
@@ -317,7 +329,11 @@ const PAGES: PageSpec[] = [
     slug: "exam-center",
     title: "Exam Center",
     sections: [
-      { type: "examCenter", name: "Exam Center" },
+      {
+        type: "examCenter",
+        name: "Exam Center",
+        overrides: { image: "/assets/photos/exam-room-02.webp" },
+      },
       { type: "featureGrid", name: "On the day" },
       { type: "gallery", name: "Facilities" },
       { type: "faq", name: "FAQ" },
@@ -655,7 +671,7 @@ const POSTS = [
     excerpt:
       "Tour the classrooms and exam rooms, meet the teachers and take a free placement assessment.",
     category: "Event",
-    coverUrl: "/assets/gallery/campus-03.webp",
+    coverUrl: "/assets/gallery/cover-01.webp",
     location: "Imtiyaz El Djazair — main campus",
     content:
       "<p>Come and see the centre. We will show you the classrooms, the exam rooms and how a session runs, and you can take a free placement assessment on the day.</p><h2>Programme</h2><ul><li>Guided tour of the campus</li><li>Free placement assessment</li><li>Q&amp;A with the teaching team</li><li>Information on upcoming examination sessions</li></ul><p><em>TODO(client): set the real date, time and address for this event.</em></p>",
@@ -667,20 +683,29 @@ const POSTS = [
     excerpt:
       "A full-length mock sat in our exam rooms, marked and returned with a band estimate and written feedback.",
     category: "Event",
-    coverUrl: "/assets/gallery/campus-01.webp",
+    coverUrl: "/assets/gallery/cover-02.webp",
     location: "Imtiyaz El Djazair — exam centre",
     content:
       "<p>Sit a full-length IELTS mock test in our exam rooms, under real timing and real rules. Papers are marked against the official descriptors and returned with a band estimate and written feedback.</p><p>Places are limited. Register in advance through the contact form.</p><p><em>TODO(client): set the real date and registration details.</em></p>",
   },
 ];
 
+// The school's own photographs. Captions are localized; `json()` stores the
+// { en, fr, ar } object the same way the admin editor writes it.
 const GALLERY = [
-  { title: "Campus", album: "Campus", imageUrl: "/assets/gallery/campus-01.webp" },
-  { title: "Classrooms", album: "Campus", imageUrl: "/assets/gallery/campus-02.webp" },
-  { title: "Exam room", album: "Exam Center", imageUrl: "/assets/gallery/campus-03.webp" },
-  { title: "Reception", album: "Campus", imageUrl: "/assets/gallery/campus-04.webp" },
-  { title: "Study area", album: "Campus", imageUrl: "/assets/gallery/campus-05.webp" },
-  { title: "Waiting area", album: "Exam Center", imageUrl: "/assets/gallery/campus-06.webp" },
+  { title: json({ en: "Reception desk", fr: "Comptoir d'accueil", ar: "مكتب الاستقبال" }), album: "Reception", imageUrl: "/assets/photos/reception-01.webp" },
+  { title: json({ en: "Reception", fr: "L'accueil", ar: "الاستقبال" }), album: "Reception", imageUrl: "/assets/photos/reception-02.webp" },
+  { title: json({ en: "Welcome desk", fr: "Le comptoir d'accueil", ar: "مكتب الترحيب" }), album: "Reception", imageUrl: "/assets/photos/reception-03.webp" },
+  { title: json({ en: "Official IELTS test centre", fr: "Centre d'examen IELTS officiel", ar: "مركز اختبار آيلتس معتمد" }), album: "Reception", imageUrl: "/assets/photos/reception-04.webp" },
+  { title: json({ en: "Entrance hall", fr: "Le hall d'entrée", ar: "بهو الدخول" }), album: "Reception", imageUrl: "/assets/photos/reception-05.webp" },
+  { title: json({ en: "Waiting area", fr: "L'espace d'attente", ar: "منطقة الانتظار" }), album: "Campus", imageUrl: "/assets/photos/waiting-01.webp" },
+  { title: json({ en: "Study and waiting space", fr: "Espace d'attente et de travail", ar: "فضاء الانتظار والمراجعة" }), album: "Campus", imageUrl: "/assets/photos/waiting-02.webp" },
+  { title: json({ en: "Towards the classrooms", fr: "Vers les salles de cours", ar: "نحو قاعات الدراسة" }), album: "Campus", imageUrl: "/assets/photos/corridor-01.webp" },
+  { title: json({ en: "IELTS registration point", fr: "Point d'inscription IELTS", ar: "نقطة التسجيل للآيلتس" }), album: "Campus", imageUrl: "/assets/photos/corridor-02.webp" },
+  { title: json({ en: "Main corridor", fr: "Le couloir principal", ar: "الممر الرئيسي" }), album: "Campus", imageUrl: "/assets/photos/corridor-03.webp" },
+  { title: json({ en: "A classroom", fr: "Une salle de cours", ar: "قاعة دراسة" }), album: "Campus", imageUrl: "/assets/photos/classroom-01.webp" },
+  { title: json({ en: "Exam room, individual desks", fr: "Salle d'examen, postes individuels", ar: "قاعة امتحان بطاولات فردية" }), album: "Exam Center", imageUrl: "/assets/photos/exam-room-01.webp" },
+  { title: json({ en: "Exam room set up for a session", fr: "Salle d'examen prête pour une session", ar: "قاعة امتحان جاهزة للجلسة" }), album: "Exam Center", imageUrl: "/assets/photos/exam-room-02.webp" },
 ];
 
 async function seedDemoContent() {

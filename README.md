@@ -134,7 +134,8 @@ dashboard shows a reminder until you turn it off in *Site settings*.
 | --- | --- | --- |
 | ~~Partner logos~~ | `public/assets/partners/*.png` | **Done** — the official artwork you supplied is in place (British Council, IELTS, Manchester City, BSC Education, TOLES Legal). Originals kept in `public/assets/source/`. |
 | **Partner relationships** | Admin → Partners | Descriptions start empty on purpose. Only describe a relationship the school has actually confirmed, and tick *relationship confirmed* once you hold it in writing. |
-| **Gallery photos** | `public/assets/gallery/*.webp` | Abstract branded graphics, deliberately non-photographic. Replace with real photos of the campus, classrooms and exam rooms. Seven campus video clips you supplied are in `public/assets/video/` and can be used as a hero background. |
+| ~~Gallery photos~~ | `public/assets/photos/*.webp` | **Done** — the 13 photographs you supplied are in place across three albums (Reception, Campus, Exam Center), and two of them also illustrate the *About* and *Exam Center* sections. Originals kept in `public/assets/source/photos/`. **One caveat:** the files you sent are 289 x 640 pixels — phone-thumbnail size. They are shown at their true size and never enlarged, so they stay sharp, but they cannot fill a large frame. If you have the full-resolution originals, re-upload them through Admin -> Media and the site will use them as-is. |
+| ~~Campus videos~~ | `public/assets/video/*.mp4` | **Done** — the seven clips you supplied are live: four in the *Summer Camp* section and three presenting the school on the home page. Each one loads only when a visitor presses play, so they cost nothing to page speed. |
 | **Statistics** | Admin → Statistics | 18 teachers / 2,400 students / 12 courses / 10 years are illustrative figures. |
 | **Testimonials** | Admin → Testimonials | Invented students. Get written permission before publishing a real name or photo. |
 | **News & events** | Admin → News & Events | Marked `TODO(client)` in the article body. |
@@ -277,7 +278,7 @@ prisma/
   schema.prisma          data model (portable across SQLite/PostgreSQL/MySQL)
   seed.ts                Super Admin + structure + clearly-marked demo content
 public/
-  assets/                logo, partner placeholders, demo gallery, OG image
+  assets/                logo, partner logos, photos/, video/, source/ originals
   uploads/               media uploaded from the admin (git-ignored)
 storage/
   media/                 Media Library uploads + brand artwork, served by /media
