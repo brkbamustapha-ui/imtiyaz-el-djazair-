@@ -170,13 +170,80 @@ const PAGES: PageSpec[] = [
       { type: "hero", name: "Hero" },
       { type: "partners", name: "Partners & Accreditations", overrides: { layout: "cards" } },
       { type: "about", name: "About the school" },
+      {
+        type: "videoGallery",
+        name: "Inside the school",
+        overrides: {
+                "eyebrow": {
+                          "en": "Inside the school",
+                          "fr": "Dans l'école",
+                          "ar": "داخل المدرسة"
+                },
+                "title": {
+                          "en": "See where you will study",
+                          "fr": "Découvrez où vous étudierez",
+                          "ar": "شاهد أين ستدرس"
+                },
+                "subtitle": {
+                          "en": "Our classrooms and a lesson in progress, filmed on campus — so you know what to expect before you walk in.",
+                          "fr": "Nos salles de cours et un cours en session, filmés sur place — pour savoir à quoi vous attendre avant même d'entrer.",
+                          "ar": "قاعاتنا وحصة جارية، مصوّرة في المقر — لتعرف ما ينتظرك قبل أن تدخل."
+                },
+                "body": {
+                          "en": "",
+                          "fr": "",
+                          "ar": ""
+                },
+                "videos": [
+                          {
+                                    "title": {
+                                              "en": "An English class in session",
+                                              "fr": "Un cours d'anglais en session",
+                                              "ar": "حصة إنجليزية جارية"
+                                    },
+                                    "src": "/assets/video/school-01.mp4",
+                                    "poster": "/assets/video/posters/school-01.webp"
+                          },
+                          {
+                                    "title": {
+                                              "en": "Our main teaching room",
+                                              "fr": "Notre grande salle de cours",
+                                              "ar": "قاعتنا الرئيسية"
+                                    },
+                                    "src": "/assets/video/school-02.mp4",
+                                    "poster": "/assets/video/posters/school-02.webp"
+                          },
+                          {
+                                    "title": {
+                                              "en": "Seminar room",
+                                              "fr": "Salle de séminaire",
+                                              "ar": "قاعة الندوات"
+                                    },
+                                    "src": "/assets/video/school-03.mp4",
+                                    "poster": "/assets/video/posters/school-03.webp"
+                          }
+                ],
+                "columns": "3",
+                "tone": "surface",
+                "primaryCta": [
+                          {
+                                    "label": {
+                                              "en": "Visit the campus",
+                                              "fr": "Visiter le campus",
+                                              "ar": "زيارة المقر"
+                                    },
+                                    "href": "/contact"
+                          }
+                ]
+      },
+      },
       { type: "services", name: "What we offer" },
       { type: "ielts", name: "IELTS journey" },
       { type: "stats", name: "Key figures" },
       { type: "examCenter", name: "Exam Center" },
       { type: "valueCards", name: "Mission, vision, approach" },
       { type: "gallery", name: "Campus gallery" },
-      { type: "videoGallery", name: "Summer Camp" },
+      { type: "videoGallery", name: "Summer Camp", overrides: { tone: "default" } },
       { type: "testimonials", name: "Student testimonials" },
       { type: "news", name: "Latest news" },
       { type: "faq", name: "FAQ" },
