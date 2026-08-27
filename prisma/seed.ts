@@ -176,6 +176,7 @@ const PAGES: PageSpec[] = [
       { type: "examCenter", name: "Exam Center" },
       { type: "valueCards", name: "Mission, vision, approach" },
       { type: "gallery", name: "Campus gallery" },
+      { type: "videoGallery", name: "Summer Camp" },
       { type: "testimonials", name: "Student testimonials" },
       { type: "news", name: "Latest news" },
       { type: "faq", name: "FAQ" },

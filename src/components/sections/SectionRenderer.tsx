@@ -17,6 +17,7 @@ import { ContactSection } from "./ContactSection";
 import { RichTextSection } from "./RichTextSection";
 import { FeatureGridSection } from "./FeatureGridSection";
 import { StepsSection } from "./StepsSection";
+import { VideoGallerySection } from "./VideoGallerySection";
 import type { SectionProps } from "./helpers";
 
 /**
@@ -42,6 +43,7 @@ const REGISTRY: Record<string, (props: SectionProps) => any> = {
   richText: RichTextSection,
   featureGrid: FeatureGridSection,
   steps: StepsSection,
+  videoGallery: VideoGallerySection,
 };
 
 export function SectionRenderer({
