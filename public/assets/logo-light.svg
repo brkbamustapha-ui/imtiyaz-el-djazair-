@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 194" role="img" aria-label="Imtiyaz El Djazair">
+  <title>Imtiyaz El Djazair — School &amp; Exam Center</title>
+  <defs>
+    <mask id="fp">
+      <rect x="0" y="0" width="580" height="194" fill="#fff"/>
+      <g fill="none" stroke="#000" stroke-width="3.1" stroke-linecap="round">
+        <circle cx="56" cy="34" r="24.5"/><circle cx="56" cy="34" r="18.5"/>
+        <circle cx="56" cy="34" r="12.5"/><circle cx="56" cy="34" r="6.5"/>
+      </g>
+      <path d="M56 6 L64 18 L58 34 L66 48 L56 62" fill="none" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g>
+    <path d="M12 122 H76 A64 64 0 0 1 12 186 Z" fill="#2C4E8F"/>
+    <path d="M12 76 H72 V136 A60 60 0 0 1 12 76 Z" fill="#17AEE0"/>
+    <circle cx="56" cy="34" r="28" fill="#17AEE0" mask="url(#fp)"/>
+  </g>
+  <g fill="#FFFFFF" font-family="'Sora','Inter','Segoe UI',Helvetica,Arial,sans-serif">
+    <text x="126" y="80" font-size="52" font-weight="700" letter-spacing="1.5">IMTIYAZ</text>
+    <text x="126" y="134" font-size="52" font-weight="700" letter-spacing="1.5">EL DJAZAIR</text>
+    <text x="128" y="162" font-size="18" font-weight="500" letter-spacing="3.4" fill="#9fb2d1">SCHOOL &amp; EXAM CENTER</text>
+  </g>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 96" role="img" aria-label="MANCHESTER CITY">
+  <title>MANCHESTER CITY</title>
+  <!-- PLACEHOLDER — replace from Admin -> Partners with the official artwork
+       supplied by the partner. Do not ship a third-party logo you are not
+       licensed to display. -->
+  <rect x="0" y="18" width="5" height="60" rx="2.5" fill="#6CABDD"/>
+  <g font-family="'Sora','Inter','Segoe UI',Helvetica,Arial,sans-serif" fill="#E7EEF9">
+    <text x="20" y="48" font-size="27" font-weight="700" letter-spacing="0.6">MANCHESTER</text>
+    <text x="20" y="76" font-size="27" font-weight="700" letter-spacing="0.6">CITY</text>
+  </g>
+</svg>

@@ -1,0 +1,325 @@
+// Imtiyaz El Djazair — data model
+//
+// PROVIDER NOTE
+// -------------
+// The default provider is SQLite so the project runs with zero infrastructure.
+// To switch to PostgreSQL (recommended for production):
+//   1. change `provider = "sqlite"` to `provider = "postgresql"` below
+//   2. set DATABASE_URL="postgresql://user:pass@host:5432/imtiyaz?schema=public"
+//   3. run `npx prisma db push` (or `prisma migrate dev`)
+// The schema deliberately uses only portable scalar types (String/Int/Boolean/
+// DateTime/Float) and stores structured content as JSON *strings*, so no model
+// change is required when switching provider.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Roles: SUPER_ADMIN | ADMIN | EDITOR  (see src/lib/permissions.ts)
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  name                String
+  passwordHash        String
+  role                String    @default("EDITOR")
+  isActive            Boolean   @default(true)
+  mustChangePassword  Boolean   @default(false)
+  avatarUrl           String?
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  media      MediaAsset[]
+  versions   ContentVersion[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  ip        String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Generic singleton settings bucket keyed by name:
+/// general | contact | social | appearance | seo | advanced | navigation | footer | hero3d
+model SiteSetting {
+  key       String   @id
+  valueJson String
+  updatedAt DateTime @updatedAt
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  isPublished Boolean  @default(true)
+  isSystem    Boolean  @default(false)
+  showInNav   Boolean  @default(false)
+  order       Int      @default(0)
+  seoJson     String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sections Section[]
+}
+
+/// A block on a page. `dataJson` is the PUBLISHED content, `draftJson` the
+/// unpublished working copy used by /admin/preview.
+model Section {
+  id        String   @id @default(cuid())
+  pageId    String
+  type      String
+  name      String
+  order     Int      @default(0)
+  isEnabled Boolean  @default(true)
+  dataJson  String   @default("{}")
+  draftJson String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, order])
+}
+
+model MediaAsset {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  url          String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  folder       String   @default("general")
+  alt          String   @default("")
+  createdAt    DateTime @default(now())
+  uploadedById String?
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([folder])
+  @@index([createdAt])
+}
+
+/// type: PARTNER | SPONSOR | CERTIFICATION | ASSOCIATION
+model Partner {
+  id          String   @id @default(cuid())
+  name        String
+  logoUrl     String
+  description String   @default("")
+  website     String   @default("")
+  type        String   @default("PARTNER")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  /// Set true only when the school has confirmed an official relationship.
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  photoUrl  String   @default("")
+  program   String   @default("")
+  quote     String
+  rating    Int      @default(5)
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// type: NEWS | EVENT
+model Post {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  type        String    @default("NEWS")
+  title       String
+  excerpt     String    @default("")
+  content     String    @default("")
+  coverUrl    String    @default("")
+  category    String    @default("News")
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  eventDate   DateTime?
+  location    String    @default("")
+  seoJson     String    @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([type, isPublished, publishedAt])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  icon        String   @default("book")
+  href        String   @default("")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+model Stat {
+  id       String @id @default(cuid())
+  label    String
+  value    Int
+  suffix   String @default("+")
+  icon     String @default("star")
+  order    Int    @default(0)
+  isActive Boolean @default(true)
+}
+
+model FaqItem {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+model GalleryItem {
+  id        String   @id @default(cuid())
+  title     String   @default("")
+  imageUrl  String
+  album     String   @default("Campus")
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Form {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  fieldsJson     String   @default("[]")
+  successMessage String   @default("Thank you! We will get back to you shortly.")
+  notifyEmail    String   @default("")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  submissions FormSubmission[]
+}
+
+model FormSubmission {
+  id        String   @id @default(cuid())
+  formId    String
+  dataJson  String
+  ip        String?
+  userAgent String?
+  isRead    Boolean  @default(false)
+  isArchived Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, createdAt])
+}
+
+/// frequency: ALWAYS | ONCE | DAILY
+model Popup {
+  id         String    @id @default(cuid())
+  name       String
+  title      String
+  body       String    @default("")
+  imageUrl   String    @default("")
+  ctaLabel   String    @default("")
+  ctaHref    String    @default("")
+  startsAt   DateTime?
+  endsAt     DateTime?
+  frequency  String    @default("ONCE")
+  delayMs    Int       @default(4000)
+  isActive   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model MenuItem {
+  id           String  @id @default(cuid())
+  menuKey      String  @default("header")
+  label        String
+  href         String
+  parentId     String?
+  order        Int     @default(0)
+  isActive     Boolean @default(true)
+  openInNewTab Boolean @default(false)
+
+  @@index([menuKey, order])
+}
+
+/// Snapshot taken before every publish/restore so content can be rolled back.
+model ContentVersion {
+  id           String   @id @default(cuid())
+  entityType   String
+  entityId     String
+  label        String   @default("")
+  snapshotJson String
+  userId       String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String   @default("")
+  entityId   String   @default("")
+  metaJson   String   @default("{}")
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+/// Minimal first-party analytics powering the dashboard counters.
+model VisitEvent {
+  id         String   @id @default(cuid())
+  path       String
+  referrer   String   @default("")
+  visitorKey String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([visitorKey])
+}
+
+/// Login throttling that survives a server restart (in-memory limiter is layered on top).
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

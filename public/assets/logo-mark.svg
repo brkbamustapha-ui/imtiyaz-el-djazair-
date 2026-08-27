@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 194" role="img" aria-label="Imtiyaz El Djazair logo mark">
+  <title>Imtiyaz El Djazair — logo mark</title>
+  <!--
+    Reconstruction of the Imtiyaz El Djazair mark from the photographs supplied
+    by the client. Colours are sampled from those photographs:
+      cyan  #17AEE0   navy #233E72
+    Replace this file (or upload a logo in Admin -> Settings -> General) with
+    the school's official vector artwork when it is available.
+  -->
+  <defs>
+    <mask id="fingerprint-ridges">
+      <rect x="0" y="0" width="96" height="194" fill="#fff"/>
+      <g fill="none" stroke="#000" stroke-width="3.1" stroke-linecap="round">
+        <circle cx="56" cy="34" r="24.5"/>
+        <circle cx="56" cy="34" r="18.5"/>
+        <circle cx="56" cy="34" r="12.5"/>
+        <circle cx="56" cy="34" r="6.5"/>
+      </g>
+      <!-- ridge break that gives the whorl its fingerprint reading -->
+      <path d="M56 6 L64 18 L58 34 L66 48 L56 62" fill="none" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <!-- lower petal (navy) : flat top, straight left edge, rounded bottom-right -->
+  <path d="M12 122 H76 A64 64 0 0 1 12 186 Z" fill="#233E72"/>
+  <!-- upper petal (cyan) : flat top, straight right edge, rounded bottom-left -->
+  <path d="M12 76 H72 V136 A60 60 0 0 1 12 76 Z" fill="#17AEE0"/>
+  <!-- fingerprint dot -->
+  <circle cx="56" cy="34" r="28" fill="#17AEE0" mask="url(#fingerprint-ridges)"/>
+</svg>

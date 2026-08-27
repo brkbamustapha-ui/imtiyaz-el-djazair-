@@ -1,0 +1,47 @@
+import type { NextConfig } from "next";
+
+/**
+ * Security headers applied to every response.
+ * NOTE: we deliberately avoid a strict CSP with `unsafe-inline` removed because the
+ * CMS lets a Super Admin inject custom CSS/JS (see Admin -> Advanced Settings).
+ * If you disable that feature (ALLOW_CUSTOM_SCRIPTS=false), you can tighten CSP further.
+ */
+const securityHeaders = [
+  { key: "X-DNS-Prefetch-Control", value: "on" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
+  },
+  experimental: {
+    optimizePackageImports: ["framer-motion"],
+  },
+  async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Uploaded media is user content: never let the browser sniff it into a script.
+      {
+        source: "/uploads/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Content-Disposition", value: "inline" },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
+  },
+};
+
+export default nextConfig;
