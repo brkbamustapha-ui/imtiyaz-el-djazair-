@@ -234,7 +234,8 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     email: "contact@imtiyazeldjazair.com",
     admissionsEmail: "admissions@imtiyazeldjazair.com",
     mapEmbedUrl: "",
-    mapsLink: "",
+    // The school's own Google Maps pin, as published on its Instagram bio.
+    mapsLink: "https://maps.app.goo.gl/6JRUTa2CWgjvEnVx9",
     openingHours: [
       { day: { en: "Sunday – Thursday", fr: "Dimanche – Jeudi", ar: "الأحد – الخميس" }, hours: "08:30 – 18:00" },
       { day: { en: "Saturday", fr: "Samedi", ar: "السبت" }, hours: "09:00 – 15:00" },
@@ -242,11 +243,13 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     ],
   },
   social: {
+    // Accounts the school confirmed. The rest stay empty: an empty field simply
+    // hides its icon, so nothing links to an account that does not exist.
     facebook: "",
-    instagram: "",
+    instagram: "https://www.instagram.com/imtiyaz_el_djazair_officiel",
     linkedin: "",
     youtube: "",
-    tiktok: "",
+    tiktok: "https://www.tiktok.com/@imtiyazaldjazair",
     x: "",
     whatsapp: "",
   },

@@ -139,7 +139,8 @@ dashboard shows a reminder until you turn it off in *Site settings*.
 | **Statistics** | Admin → Statistics | 18 teachers / 2,400 students / 12 courses / 10 years are illustrative figures. |
 | **Testimonials** | Admin → Testimonials | Invented students. Get written permission before publishing a real name or photo. |
 | **News & events** | Admin → News & Events | Marked `TODO(client)` in the article body. |
-| **Contact details** | Admin → Site settings | Address, phone and email are placeholders. |
+| **Contact details** | Admin → Site settings | Address, phone and email are still placeholders. The map pin is real, so the street address is the one thing left that does not match it — worth fixing first. |
+| ~~Instagram, TikTok, map pin~~ | Admin → Site settings | **Done** — the school's own accounts and Google Maps pin are wired in and show as icons in the footer of every page and on the contact page. The other social fields (Facebook, YouTube, LinkedIn, X, WhatsApp) are left empty on purpose: an empty field hides its icon, so nothing links to an account that does not exist. Fill one in and its icon appears. |
 | **Privacy Policy / Terms** | Admin → Pages | Placeholder text — have both reviewed for your jurisdiction. |
 | ~~Logo~~ | `public/assets/logo/logo.png` | **Done** — your own logo file is in place, with its flat background made transparent. The original is at `public/assets/source/logo-original.jpg`. Nothing is drawn in code. |
 

@@ -28,7 +28,31 @@ export async function Footer() {
   ]);
   const { footer, general, contact, social } = settings;
 
-  const socials = SOCIAL_FIELDS.filter((field) => social[field.key]?.trim());
+  // The map pin sits in the same icon row as the social accounts, but it lives
+  // under `contact`, not `social` — so it is appended rather than filtered in.
+  const socials: { key: string; href: string; icon: string; label: string }[] = [
+    ...SOCIAL_FIELDS.filter((field) => social[field.key]?.trim()).map((field) => ({
+      key: field.key,
+      href: social[field.key],
+      icon: field.icon,
+      label: field.label,
+    })),
+    ...(contact.mapsLink?.trim()
+      ? [
+          {
+            key: "maps",
+            href: contact.mapsLink,
+            icon: "pin",
+            label:
+              locale === "fr"
+                ? "Nous trouver sur Google Maps"
+                : locale === "ar"
+                  ? "موقعنا على خرائط جوجل"
+                  : "Find us on Google Maps",
+          },
+        ]
+      : []),
+  ];
 
   return (
     <footer className="relative mt-auto overflow-hidden border-t border-[var(--c-border)] bg-[var(--c-surface)]">
@@ -71,7 +95,7 @@ export async function Footer() {
               {socials.map((field) => (
                 <li key={field.key}>
                   <a
-                    href={safeHref(social[field.key])}
+                    href={safeHref(field.href)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={field.label}

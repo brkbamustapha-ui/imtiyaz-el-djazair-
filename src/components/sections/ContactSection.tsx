@@ -10,7 +10,7 @@ import { DEFAULT_CONTACT_FIELDS, type FormFieldDef } from "@/lib/forms";
 import { bool, ls, str, SectionHeading, SectionShell, type SectionProps } from "./helpers";
 
 export async function ContactSection({ data, locale, sectionId }: SectionProps) {
-  const contact = await getSetting("contact");
+  const [contact, social] = await Promise.all([getSetting("contact"), getSetting("social")]);
   const showForm = bool(data, "showForm", true);
   const formSlug = str(data, "formSlug", "contact") || "contact";
   const form = showForm ? await getFormBySlug(formSlug) : null;
@@ -42,6 +42,26 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
       href: `mailto:${contact.email}`,
     },
   ].filter(Boolean) as { icon: string; label: string; value: string; href?: string }[];
+
+  // The school's accounts and its map pin, as icons. Each entry only appears
+  // when the matching setting holds a link, so nothing ever points nowhere.
+  const links = (
+    [
+      ["instagram", social.instagram, "Instagram"],
+      ["tiktok", social.tiktok, "TikTok"],
+      ["facebook", social.facebook, "Facebook"],
+      ["youtube", social.youtube, "YouTube"],
+      ["linkedin", social.linkedin, "LinkedIn"],
+      ["whatsapp", social.whatsapp, "WhatsApp"],
+      [
+        "pin",
+        contact.mapsLink,
+        locale === "fr" ? "Google Maps" : locale === "ar" ? "خرائط جوجل" : "Google Maps",
+      ],
+    ] as const
+  )
+    .filter(([, href]) => href?.trim())
+    .map(([icon, href, label]) => ({ icon, href: href as string, label }));
 
   return (
     <SectionShell id={sectionId}>
@@ -81,6 +101,33 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
                   </li>
                 ))}
               </ul>
+            )}
+
+            {links.length > 0 && (
+              <div>
+                <h3 className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--c-muted)]">
+                  {locale === "fr"
+                    ? "Suivez-nous"
+                    : locale === "ar"
+                      ? "تابعونا"
+                      : "Follow us"}
+                </h3>
+                <ul className="mt-4 flex flex-wrap gap-2.5">
+                  {links.map((link) => (
+                    <li key={link.icon}>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={link.label}
+                        className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--c-border)] bg-[rgb(var(--c-accent-rgb)/0.08)] text-[var(--c-accent)] transition-all hover:-translate-y-0.5 hover:border-[var(--c-accent)] hover:bg-[rgb(var(--c-accent-rgb)/0.16)]"
+                      >
+                        <Icon name={link.icon} size={18} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {bool(data, "showHours", true) && contact.openingHours.length > 0 && (

@@ -114,6 +114,44 @@ async function normaliseBrandPaths() {
   }
 }
 
+/**
+ * Fill in a setting only where it is still empty.
+ *
+ * seedSettings() skips any key that already exists, so an install created
+ * before these links were known would never pick them up. This backfills the
+ * school's own accounts and map pin into the blanks and touches nothing else —
+ * a value the owner has already typed always wins.
+ */
+async function backfillContactLinks() {
+  const wanted: Record<string, Record<string, string>> = {
+    contact: { mapsLink: DEFAULT_SETTINGS.contact.mapsLink },
+    social: {
+      instagram: DEFAULT_SETTINGS.social.instagram,
+      tiktok: DEFAULT_SETTINGS.social.tiktok,
+    },
+  };
+
+  const filled: string[] = [];
+  for (const [key, fields] of Object.entries(wanted)) {
+    const row = await db.siteSetting.findUnique({ where: { key } });
+    if (!row) continue;
+    const value = JSON.parse(row.valueJson) as Record<string, unknown>;
+    let changed = false;
+    for (const [field, url] of Object.entries(fields)) {
+      if (!url) continue;
+      if (typeof value[field] === "string" && (value[field] as string).trim() !== "") continue;
+      value[field] = url;
+      changed = true;
+      filled.push(`${key}.${field}`);
+    }
+    if (changed) {
+      await db.siteSetting.update({ where: { key }, data: { valueJson: JSON.stringify(value) } });
+    }
+  }
+
+  if (filled.length > 0) console.log(`✓ Filled empty contact links: ${filled.join(", ")}`);
+}
+
 async function seedSettings() {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const existing = await db.siteSetting.findUnique({ where: { key } });
@@ -771,6 +809,7 @@ async function main() {
   console.log("\nSeeding Imtiyaz El Djazair…\n");
   await seedSuperAdmin();
   await seedSettings();
+  await backfillContactLinks();
   await normaliseBrandPaths();
   await seedMenu();
   await seedPages();
