@@ -1,11 +1,7 @@
 import "server-only";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { randomBytes } from "node:crypto";
 import sharp from "sharp";
-
-/** Runtime-writable media root, served through the /media route handler. */
-export const MEDIA_ROOT = path.join(process.cwd(), "storage", "media");
+import { putFile } from "./storage";
 
 export const IMAGE_MIME = [
   "image/png",
@@ -66,6 +62,9 @@ function sanitizeSvg(input: string): string {
     .replace(/(href|xlink:href)\s*=\s*("|')\s*javascript:[^"']*\2/gi, "")
     .replace(/<!ENTITY[\s\S]*?>/gi, "");
 }
+
+/** Folder key that private form attachments are stored under. */
+export const SUBMISSION_FOLDER = "submissions";
 
 export type SavedFile = {
   filename: string;
@@ -145,18 +144,18 @@ export async function saveUpload(
   const safeFolder = folder.replace(/[^a-z0-9-_]/gi, "").slice(0, 40) || "general";
   const extension = EXTENSION_BY_MIME[mimeType] ?? "";
   const filename = `${Date.now().toString(36)}-${randomBytes(6).toString("hex")}${extension}`;
-  // NOT /public: `next start` serves that directory from a build-time manifest,
-  // so a file written at runtime would never be reachable. See app/media/[...path].
-  const directory = path.join(MEDIA_ROOT, safeFolder);
+  // NOT /public and not the local filesystem: `next start` serves /public from a
+  // build-time manifest, and a serverless host throws away anything written to
+  // disk. The bytes go to the database. See src/lib/storage.ts.
+  const key = `${safeFolder}/${filename}`;
 
-  await mkdir(directory, { recursive: true });
-  await writeFile(path.join(directory, filename), buffer);
+  await putFile(key, buffer, mimeType);
 
   return {
     ok: true,
     file: {
       filename,
-      url: `/media/${safeFolder}/${filename}`,
+      url: `/media/${key}`,
       mimeType,
       size: buffer.length,
       width,
@@ -166,9 +165,8 @@ export async function saveUpload(
 }
 
 /**
- * Attachments submitted through a public form are written OUTSIDE /public so
- * they are never directly reachable — the admin downloads them through an
- * authenticated route.
+ * Attachments submitted through a public form are stored as private, so /media
+ * refuses to serve them. The admin downloads them through an authenticated route.
  */
 export async function savePrivateUpload(
   file: File,
@@ -187,9 +185,7 @@ export async function savePrivateUpload(
 
   const extension = EXTENSION_BY_MIME[sniffed] ?? "";
   const storedAs = `${Date.now().toString(36)}-${randomBytes(10).toString("hex")}${extension}`;
-  const directory = path.join(process.cwd(), "storage", "submissions");
-  await mkdir(directory, { recursive: true });
-  await writeFile(path.join(directory, storedAs), buffer);
+  await putFile(`${SUBMISSION_FOLDER}/${storedAs}`, buffer, sniffed, true);
 
   return { ok: true, storedAs, mimeType: sniffed, size: buffer.length };
 }

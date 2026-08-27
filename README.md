@@ -60,7 +60,8 @@ Copy `.env.example` to `.env`. Never commit `.env`.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | Default `file:./dev.db` (SQLite). See section 7 for PostgreSQL. |
+| `DATABASE_URL` | yes | PostgreSQL connection string. **No default** — paste your own. Use the *pooled* string if your provider gives you two. |
+| `DIRECT_URL` | yes | Non-pooled string, used only for schema changes (`prisma db push`). With no pooler, set it to the same value as `DATABASE_URL`. Prisma errors at startup if it is missing. |
 | `NEXT_PUBLIC_SITE_URL` | yes | Public base URL. Used for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. |
 | `AUTH_SECRET` | yes | 32+ random characters — `openssl rand -base64 48`. Signs session and CSRF tokens. **Change it in production.** |
 | `ADMIN_EMAIL` | first run | Email of the initial Super Admin. |
@@ -162,14 +163,21 @@ The logo is always a real image file. Nothing in this codebase reproduces the
 mark in SVG, CSS or type — the current file is the artwork the school supplied,
 with only its flat background removed and the margin trimmed.
 
-Two equivalent ways to install it:
+**Admin → Site settings → Branding** — upload `Logo`, and optionally a
+light-coloured `Logo for dark backgrounds`, a `Favicon` and a share image. They
+are stored in the database and served immediately at `/media/…`, with no rebuild
+and no redeploy.
 
-1. **Admin → Site settings → Branding** — upload `Logo`, and optionally a
-   light-coloured `Logo for dark backgrounds`, a `Favicon` and a share image.
-2. **Drop the files into `storage/media/brand/`** on the server:
-   `logo.svg` (or `.png`/`.webp`), `logo-dark.svg`, `favicon.png`,
-   `og-image.png`. They are served immediately at `/media/brand/…` — no rebuild.
-   A file here takes priority over `public/assets/logo/`.
+Two fallbacks exist for when that setting is empty, in this order:
+
+1. A file stored under the `brand/` folder of the file store, named `logo`,
+   `logo-dark`, `favicon` or `og-image` with any image extension. There is no
+   way to put one there from the dashboard — the Branding uploader above is the
+   supported route — but a developer can, with `putFile` from
+   `src/lib/storage.ts`.
+2. A file committed at `public/assets/logo/logo.png` (or `.svg`/`.webp`/…),
+   which is where the school's current logo lives. Committed files need a
+   rebuild to change, which is exactly why the dashboard route exists.
 
 An SVG would be sharper than the current raster file — worth requesting from
 whoever designed the mark.
@@ -241,46 +249,85 @@ Admin cannot be demoted, disabled or deleted.
 
 ## 7. Deployment
 
-### Before you deploy
+### The database is PostgreSQL
 
-1. `AUTH_SECRET` — a fresh 32+ character random value.
-2. `NEXT_PUBLIC_SITE_URL` — the real domain, e.g. `https://imtiyazeldjazair.com`.
-3. `ADMIN_PASSWORD` — blank it once the owner has signed in and changed it.
+SQLite is gone. It cannot work on a serverless host: the filesystem there is
+read-only, and every invocation gets its own copy, so a write is lost the moment
+the request ends and no two requests agree on the data. Postgres runs both
+locally and in production, so what you test is what ships.
+
+Uploaded files went the same way. The Media Library, brand artwork and form
+attachments used to be written under `storage/`; they are now rows in the
+database (`StoredFile`, see `src/lib/storage.ts`) and served by the same
+`/media/<folder>/<file>` URLs as before. That keeps the whole site on one
+service — no bucket, no second set of credentials.
+
+Files that are part of the design — the logo, partner marks, the campus
+photographs, the videos — are **not** in the database. They are committed under
+`public/assets`, ship inside the deployment and are served as static files.
+
+### Deploying to Vercel
+
+**1. Create a PostgreSQL database.** Vercel dashboard → *Storage* → *Create
+Database* → Postgres, or a free database at [Neon](https://neon.tech) or
+[Supabase](https://supabase.com/database). Copy the connection strings it gives
+you — a *pooled* one and a *direct* one. Nobody can guess these for you.
+
+**2. Set the environment variables** in Vercel → *Settings* → *Environment
+Variables*, for Production (and Preview, if you use it):
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | the **pooled** connection string |
+| `DIRECT_URL` | the **direct** connection string (same value if there is only one) |
+| `AUTH_SECRET` | a fresh 32+ character random value — `openssl rand -base64 48` |
+| `NEXT_PUBLIC_SITE_URL` | your real domain, e.g. `https://imtiyazeldjazair.com` |
+| `MAX_UPLOAD_MB` | optional, default `8` |
+| `ALLOW_CUSTOM_SCRIPTS` | `false` |
+| `SEED_DEMO_CONTENT` | `false` once you have your own content |
+
+Do **not** set `ADMIN_PASSWORD` in Vercel. It is only read by the seed script,
+which you run from your own machine in step 3.
+
+**3. Create the schema and the owner account**, once, from your machine —
+pointing at the production database:
+
+```bash
+DATABASE_URL="<direct string>" DIRECT_URL="<direct string>" \
+ADMIN_EMAIL="owner@yourdomain.com" ADMIN_PASSWORD="<choose one>" \
+  npx prisma db push && npm run db:seed
+```
+
+Use the **direct** string here: `db push` cannot run over a transaction-mode
+pooler. Then clear `ADMIN_PASSWORD` from your shell history — the account exists
+now, and you will be asked to change the password at first login.
+
+**4. Deploy.** Vercel runs `npm run build`, which is
+`prisma generate && next build`. Nothing else is needed: no build-time database
+access, no migration step in the pipeline.
+
+### What is still true anywhere you host
+
+- The app needs a **Node.js runtime** — it is not a static export.
+- The in-memory rate limiter is per-instance. Across several instances, back
+  `src/lib/rate-limit.ts` with a shared store (Redis/Upstash). The persisted
+  `LoginAttempt` table already covers login throttling across restarts.
+- Media is served by the `/media/[...path]` route, which sets `nosniff`, an
+  inline disposition and immutable caching, and refuses private attachments.
+  Immutable caching means the CDN answers after the first hit, so serving files
+  from Postgres costs one query per file, not one per visitor.
+- If the Media Library ever outgrows the database (many large videos), move
+  `putFile`/`getFile` in `src/lib/storage.ts` to object storage. Nothing else
+  in the codebase needs to change — that is the whole point of the module.
+
+### Before you go live
+
+1. `AUTH_SECRET` — a fresh random value, not the one from `.env.example`.
+2. `NEXT_PUBLIC_SITE_URL` — the real domain.
+3. `ADMIN_PASSWORD` — blank everywhere once the owner has signed in.
 4. `ALLOW_CUSTOM_SCRIPTS=false` unless the owner needs it.
 5. In *Admin → SEO*, turn **indexing** on when the site is ready (it also
    controls `robots.txt`).
-
-### PostgreSQL (recommended for production)
-
-The schema uses only portable column types, so switching provider needs no model
-changes:
-
-1. In `prisma/schema.prisma`, change `provider = "sqlite"` to `"postgresql"`.
-2. Set `DATABASE_URL="postgresql://user:password@host:5432/imtiyaz?schema=public"`.
-3. `npx prisma db push` (or `npx prisma migrate deploy`), then `npm run db:seed`.
-
-### Hosting
-
-The app needs a **Node.js runtime** (not a static export) and a **writable disk**
-for `storage/` (media uploads, brand artwork and form attachments).
-
-- **A VPS / container** is the simplest fit: `npm ci && npm run build && npm start`
-  behind Nginx or Caddy for TLS. Keep the whole `storage/` directory on a
-  persistent volume and include it in your backups along with the database.
-- **Vercel and similar serverless hosts** have an ephemeral filesystem, so
-  uploads would not survive. Point `saveUpload` / `savePrivateUpload` in
-  `src/lib/upload.ts` at object storage (S3, R2, Supabase Storage) before
-  deploying there, and use a hosted PostgreSQL database.
-
-> **Why uploads do not live in `/public`.** `next start` serves that directory
-> from a manifest built at compile time, so a file written after the build is
-> never reachable. Runtime media is stored under `storage/media/` and streamed
-> by the `/media/[...path]` route handler, which sets `nosniff`, an inline
-> disposition and immutable caching, and rejects path traversal.
-
-The in-memory rate limiter is per-instance. Behind more than one instance, back
-`src/lib/rate-limit.ts` with a shared store (Redis/Upstash); the persisted
-`LoginAttempt` table already covers login throttling across restarts.
 
 ---
 
@@ -288,14 +335,11 @@ The in-memory rate limiter is per-instance. Behind more than one instance, back
 
 ```
 prisma/
-  schema.prisma          data model (portable across SQLite/PostgreSQL/MySQL)
+  schema.prisma          data model (PostgreSQL; portable enough for MySQL)
   seed.ts                Super Admin + structure + clearly-marked demo content
 public/
   assets/                logo, partner logos, photos/, video/, source/ originals
   uploads/               media uploaded from the admin (git-ignored)
-storage/
-  media/                 Media Library uploads + brand artwork, served by /media
-  submissions/           form attachments, never publicly served
 src/
   app/
     (site)/              public website
@@ -334,7 +378,9 @@ src/
   random per-browser id. No third-party tracker, no personal data.
 - **News articles are single-language** (one article per language, by design).
   Sections, collections, menus, footer and settings are fully translatable.
-- **Uploads are local files** under `storage/`. Move them to object storage
-  before deploying to a serverless host (see section 7).
+- **Uploads live in the database**, not on disk, so the site runs on a
+  serverless host with no bucket to configure. Fine for images and PDFs; move
+  `src/lib/storage.ts` to object storage if the Media Library ever fills with
+  large videos (see section 7).
 - **No logo is bundled.** The project deliberately ships without one rather than
   approximating the school's mark; see §4b.

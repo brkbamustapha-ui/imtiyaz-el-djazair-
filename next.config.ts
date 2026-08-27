@@ -33,6 +33,13 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["framer-motion"],
   },
+  // src/lib/brand.ts probes public/assets/logo for a committed logo file. On a
+  // serverless host /public is served by the static layer and is NOT part of the
+  // function's filesystem, so that probe would find nothing and the logo would
+  // silently vanish. Tracing the folder into the bundle keeps the check honest.
+  outputFileTracingIncludes: {
+    "/**": ["./public/assets/logo/**"],
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

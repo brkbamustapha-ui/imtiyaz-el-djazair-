@@ -1,8 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { getFile } from "@/lib/storage";
+import { SUBMISSION_FOLDER } from "@/lib/upload";
 
 export const runtime = "nodejs";
 
@@ -16,9 +16,10 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 /**
- * Files attached to a public form submission live outside /public. They are
- * only readable by a signed-in user who may view submissions, and are always
- * sent as a download so nothing is ever rendered inline from user input.
+ * Files attached to a public form submission are stored private, so /media
+ * refuses them. They are only readable by a signed-in user who may view
+ * submissions, and are always sent as a download so nothing is ever rendered
+ * inline from user input.
  */
 export async function GET(
   _request: NextRequest,
@@ -35,18 +36,16 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const directory = path.resolve(process.cwd(), "storage", "submissions");
-  const target = path.resolve(directory, name);
-  if (!target.startsWith(directory + path.sep)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
+  // `true` demands a private row: a Media Library file can never be fetched here.
+  const blob = await getFile(`${SUBMISSION_FOLDER}/${name}`, true);
+  if (!blob) return new NextResponse("Not found", { status: 404 });
 
-  const data = await readFile(target).catch(() => null);
-  if (!data) return new NextResponse("Not found", { status: 404 });
+  const dot = name.lastIndexOf(".");
+  const extension = dot === -1 ? "" : name.slice(dot).toLowerCase();
 
-  return new NextResponse(new Uint8Array(data), {
+  return new NextResponse(new Uint8Array(blob.data), {
     headers: {
-      "Content-Type": MIME_BY_EXT[path.extname(name).toLowerCase()] ?? "application/octet-stream",
+      "Content-Type": MIME_BY_EXT[extension] ?? "application/octet-stream",
       "Content-Disposition": `attachment; filename="${name}"`,
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, no-store",

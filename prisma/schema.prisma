@@ -1,23 +1,33 @@
 // Imtiyaz El Djazair — data model
 //
-// PROVIDER NOTE
-// -------------
-// The default provider is SQLite so the project runs with zero infrastructure.
-// To switch to PostgreSQL (recommended for production):
-//   1. change `provider = "sqlite"` to `provider = "postgresql"` below
-//   2. set DATABASE_URL="postgresql://user:pass@host:5432/imtiyaz?schema=public"
-//   3. run `npx prisma db push` (or `prisma migrate dev`)
-// The schema deliberately uses only portable scalar types (String/Int/Boolean/
-// DateTime/Float) and stores structured content as JSON *strings*, so no model
-// change is required when switching provider.
+// PROVIDER
+// --------
+// PostgreSQL, everywhere: local development and production run the same engine,
+// so what you test is what ships. It used to be SQLite, which cannot work on a
+// serverless host — the filesystem there is read-only and every invocation gets
+// its own copy, so writes are lost and no two requests agree on the data.
+//
+// Prisma requires `provider` to be a literal, so it cannot be switched per
+// environment. Point DATABASE_URL at a Postgres instance and run
+// `npx prisma db push`.
+//
+// The schema uses only portable scalar types (String/Int/Boolean/DateTime/Float
+// and one Bytes column for uploaded files) and stores structured content as JSON
+// *strings*, so it also runs unchanged on MySQL if that is ever needed.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Poolers (Neon, Supabase, PgBouncer) hand out a pooled connection for queries
+  // but need a direct one to change the schema — `prisma db push` over a
+  // transaction-mode pooler fails. DIRECT_URL is REQUIRED: Prisma errors at
+  // startup if a referenced variable is missing, it does not fall back to `url`.
+  // On a plain Postgres with no pooler, set it to the same value as DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 /// Roles: SUPER_ADMIN | ADMIN | EDITOR  (see src/lib/permissions.ts)
@@ -120,6 +130,26 @@ model MediaAsset {
 
   @@index([folder])
   @@index([createdAt])
+}
+
+/// A file uploaded at runtime, kept in the database rather than on disk.
+///
+/// A serverless host gives each invocation its own read-only filesystem, so a
+/// file written by one request does not exist for the next. Uploads therefore
+/// live here: one row per file, addressed by the same path that appears in its
+/// URL, so `/media/<key>` needs no translation.
+///
+/// isPrivate marks a form attachment. Those are never served by /media — they
+/// go out only through the authenticated admin download route.
+model StoredFile {
+  key       String   @id
+  mimeType  String
+  size      Int
+  data      Bytes
+  isPrivate Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isPrivate])
 }
 
 /// type: PARTNER | SPONSOR | CERTIFICATION | ASSOCIATION

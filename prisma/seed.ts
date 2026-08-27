@@ -94,12 +94,16 @@ async function normaliseBrandPaths() {
     const url = typeof value[field] === "string" ? (value[field] as string) : "";
     if (url === "") continue;
 
-    // Runtime media lives outside /public and is checked on disk directly.
-    const onDisk = url.startsWith("/media/")
-      ? path.join(process.cwd(), "storage", "media", url.slice("/media/".length))
-      : path.join(process.cwd(), "public", url);
+    // Two homes, two checks: an uploaded file is a row in StoredFile, a
+    // committed one is a real file under /public.
+    const present = url.startsWith("/media/")
+      ? (await db.storedFile.findUnique({
+          where: { key: url.slice("/media/".length) },
+          select: { key: true },
+        })) !== null
+      : existsSync(path.join(process.cwd(), "public", url));
 
-    if (!existsSync(onDisk)) {
+    if (!present) {
       value[field] = "";
       changed = true;
     }

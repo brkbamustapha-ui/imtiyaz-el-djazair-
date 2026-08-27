@@ -1,21 +1,16 @@
 "use server";
 
-import { unlink } from "node:fs/promises";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
-import { MEDIA_ROOT } from "@/lib/upload";
+import { deleteFile, keyFromMediaUrl } from "@/lib/storage";
 import { fail, ok, type ActionResult } from "./_helpers";
 
-/** Only ever unlink inside the media root, whatever the stored URL says. */
+/** Only ever delete a key derived from a /media/ URL, whatever the row says. */
 async function removeFile(url: string) {
-  if (!url.startsWith("/media/")) return;
-  const root = path.resolve(MEDIA_ROOT);
-  const resolved = path.resolve(root, url.slice("/media/".length));
-  if (!resolved.startsWith(root + path.sep)) return;
-  await unlink(resolved).catch(() => undefined);
+  const key = keyFromMediaUrl(url);
+  if (key) await deleteFile(key);
 }
 
 export async function deleteMediaAction(id: string): Promise<ActionResult> {

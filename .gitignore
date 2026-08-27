@@ -27,17 +27,10 @@ yarn-error.log*
 .env*.local
 .env.production
 
-# database (local SQLite dev database)
+# leftovers from the old SQLite setup — the database is PostgreSQL now
 /prisma/*.db
 /prisma/*.db-journal
 /prisma/dev.db*
-
-# runtime media: Media Library uploads and brand artwork dropped in after build
-/storage/media/*
-!/storage/media/.gitkeep
-!/storage/media/brand
-/storage/media/brand/*
-!/storage/media/brand/README.md
 
 # typescript
 *.tsbuildinfo
@@ -45,6 +38,5 @@ yarn-error.log*
 # vercel
 .vercel
 
-# form attachments (served only through an authenticated admin route)
-/storage/submissions/*
-!/storage/submissions/.gitkeep
+# uploads and form attachments now live in the database, not on disk
+/storage/

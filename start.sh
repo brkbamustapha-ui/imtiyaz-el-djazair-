@@ -98,12 +98,47 @@ envset() {
   ' "$1" "$2"
 }
 
-# DATABASE_URL — required, has a working default
-if [ -z "$(envval DATABASE_URL)" ]; then
-  envset DATABASE_URL "file:./dev.db"
-  ok "DATABASE_URL set to the default local SQLite file"
+# DATABASE_URL / DIRECT_URL — PostgreSQL. No default exists and none is invented.
+DB_URL="$(envval DATABASE_URL)"
+case "$DB_URL" in
+  postgres://*|postgresql://*) ok "DATABASE_URL is set (PostgreSQL, value not shown)" ;;
+  file:*|"" )
+    if [ -n "$DB_URL" ]; then
+      fail "DATABASE_URL is a SQLite path. SQLite is no longer supported."
+    else
+      fail "DATABASE_URL is empty."
+    fi
+    echo
+    echo "  This project needs PostgreSQL. Get a free database, then paste its"
+    echo "  connection string into .env — nobody can guess it for you:"
+    echo
+    echo "    Neon             https://neon.tech"
+    echo "    Supabase         https://supabase.com/database"
+    echo "    Vercel Postgres  Vercel dashboard -> Storage -> Create Database"
+    echo
+    echo "  It looks like:"
+    echo "    postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
+    echo
+    echo "  Put it in .env as BOTH values (use the pooled string for DATABASE_URL"
+    echo "  and the direct one for DIRECT_URL when your provider gives you two):"
+    echo
+    echo "    DATABASE_URL=\"postgresql://...\""
+    echo "    DIRECT_URL=\"postgresql://...\""
+    echo
+    echo "  Then run this script again."
+    exit 1 ;;
+  *)
+    fail "DATABASE_URL does not look like a PostgreSQL connection string."
+    echo "  Expected it to start with postgresql:// or postgres://"
+    exit 1 ;;
+esac
+
+# DIRECT_URL is only used for schema changes. Same value is correct without a pooler.
+if [ -z "$(envval DIRECT_URL)" ]; then
+  envset DIRECT_URL "$DB_URL"
+  ok "DIRECT_URL was empty — set to the same value as DATABASE_URL"
 else
-  ok "DATABASE_URL is set"
+  ok "DIRECT_URL is set (value not shown)"
 fi
 
 # AUTH_SECRET — must be long and must not be the shipped placeholder
@@ -124,8 +159,17 @@ case "$AUTH_NOW" in
 esac
 
 # ADMIN_PASSWORD — only needed until the first login. Asked for, never printed.
-NEED_SEED=0
-[ ! -f prisma/dev.db ] && NEED_SEED=1
+# "Is there an owner yet?" is now a question for the database, not for a file.
+# A connection failure counts as "not set up" so the schema push below runs and
+# reports the real error.
+NEED_SEED=1
+if node -e '
+  const {PrismaClient}=require("@prisma/client");
+  const db=new PrismaClient();
+  db.user.count().then(n=>{process.exit(n>0?0:1)}).catch(()=>process.exit(1));
+' >/dev/null 2>&1; then
+  NEED_SEED=0
+fi
 
 if [ -z "$(envval ADMIN_PASSWORD)" ] && [ "$NEED_SEED" = "1" ]; then
   echo
@@ -151,10 +195,15 @@ fi
 # ------------------------------------------------------------ 5. Database
 step "5. Database"
 if [ "$NEED_SEED" = "1" ]; then
-  warn "no database yet — creating and seeding it…"
-  npm run setup || { fail "npm run setup failed. Read the error above."; exit 1; }
+  warn "no owner account yet — creating the schema and seeding…"
+  if ! npm run setup; then
+    fail "npm run setup failed."
+    echo "  The most common cause is a DATABASE_URL that the server rejects."
+    echo "  Check the host, the password and that the database exists."
+    exit 1
+  fi
 else
-  ok "database already exists (prisma/dev.db)"
+  ok "database is reachable and already set up"
   npx prisma generate >/dev/null 2>&1 && ok "Prisma client generated"
 fi
 

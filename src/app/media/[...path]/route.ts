@@ -1,20 +1,16 @@
-import { createReadStream, statSync } from "node:fs";
-import { Readable } from "node:stream";
-import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
+import { getFile } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Serves runtime media (Media Library uploads and brand artwork).
+ * Serves media uploaded from the dashboard (Media Library, brand artwork).
  *
- * These files CANNOT live in /public: `next start` serves that directory from a
- * manifest built at compile time, so anything written afterwards is invisible.
- * They are stored under ./storage/media and streamed from here instead.
+ * The bytes come from the database, not from disk — see src/lib/storage.ts for
+ * why. Private form attachments are stored too but are never served here: the
+ * `false` passed to getFile makes a private row read as missing.
  */
-const MEDIA_ROOT = path.resolve(process.cwd(), "storage", "media");
-
 const CONTENT_TYPE: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
@@ -43,31 +39,23 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const target = path.resolve(MEDIA_ROOT, ...segments);
-  if (target !== MEDIA_ROOT && !target.startsWith(MEDIA_ROOT + path.sep)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
+  const key = segments.join("/");
+  const dot = key.lastIndexOf(".");
+  const extension = dot === -1 ? "" : key.slice(dot).toLowerCase();
 
-  let size: number;
-  try {
-    const stats = statSync(target);
-    if (!stats.isFile()) return new NextResponse("Not found", { status: 404 });
-    size = stats.size;
-  } catch {
-    return new NextResponse("Not found", { status: 404 });
-  }
-
-  const extension = path.extname(target).toLowerCase();
+  // Serve only media types, whatever the row happens to claim.
   const contentType = CONTENT_TYPE[extension];
   if (!contentType) return new NextResponse("Not found", { status: 404 });
 
-  const stream = Readable.toWeb(createReadStream(target)) as ReadableStream;
+  const blob = await getFile(key, false);
+  if (!blob) return new NextResponse("Not found", { status: 404 });
 
-  return new NextResponse(stream, {
+  return new NextResponse(new Uint8Array(blob.data), {
     headers: {
       "Content-Type": contentType,
-      "Content-Length": String(size),
-      // Filenames are content-addressed, so they can be cached hard.
+      "Content-Length": String(blob.size),
+      // Filenames are content-addressed, so they can be cached hard. This also
+      // keeps the database out of the path: the CDN answers after the first hit.
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
       "Content-Disposition": "inline",
