@@ -342,6 +342,20 @@ vercel env pull .env.production --environment=production
 npm run db:doctor -- --from-file .env.production --rm-file
 ```
 
+Add `--summary` for four lines and nothing else — the same values the full
+report uses, so they cannot disagree:
+
+```
+DATABASE_URL Production : présente
+Base Production : oui (aws-0-eu-west-3.pooler.supabase.com)
+public.StoredFile : existe
+Migrations : 2/2 appliquées — 20260827000000_init, 20260828000000_add_stored_file
+```
+
+`indéterminé — connexion impossible` on the last two lines means the connection
+failed; that is a credentials problem, not a migration one, and no migration
+will fix it.
+
 `--from-file` describes **only** that file: anything already in your shell or in
 `.env` is cleared first, so a production `DATABASE_URL` is never reported beside
 a development `DIRECT_URL` as though they disagreed. `--rm-file` overwrites and

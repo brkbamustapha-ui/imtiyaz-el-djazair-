@@ -21,10 +21,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const B = "\x1b[1m", R = "\x1b[31m", G = "\x1b[32m", Y = "\x1b[33m", D = "\x1b[2m", O = "\x1b[0m";
-const ok = (m) => console.log(`  ${G}✓${O} ${m}`);
-const bad = (m) => console.log(`  ${R}✗${O} ${m}`);
-const warn = (m) => console.log(`  ${Y}!${O} ${m}`);
-const head = (m) => console.log(`\n${B}${m}${O}`);
+// Declared before the flags below so every helper can consult it.
+const QUIET = process.argv.includes("--summary");
+const say = (...a) => { if (!QUIET) console.log(...a); };
+const ok = (m) => say(`  ${G}✓${O} ${m}`);
+const bad = (m) => say(`  ${R}✗${O} ${m}`);
+const warn = (m) => say(`  ${Y}!${O} ${m}`);
+const head = (m) => say(`\n${B}${m}${O}`);
 
 const FIX = process.argv.includes("--fix");
 const BASELINE = "20260827000000_init";
@@ -44,6 +47,9 @@ function flagValue(...names) {
   return null;
 }
 const ENV_FILE = flagValue("--from-file", "--env-file");
+// --summary prints only the four lines, nothing else. Everything the full
+// report shows is still computed; only the printing is suppressed.
+const SUMMARY = process.argv.includes("--summary");
 // --rm-env-file deletes it afterwards: production credentials should not sit on
 // a laptop any longer than the check that needed them.
 const RM_ENV_FILE = process.argv.includes("--rm-env-file") || process.argv.includes("--rm-file");
@@ -76,7 +82,7 @@ if (ENV_FILE) {
   if (!loadEnv(resolved, true)) {
     console.log(`\x1b[31mNo such file: ${ENV_FILE}\x1b[0m`);
     console.log(`Run  vercel env pull ${ENV_FILE} --environment=production  first.`);
-  console.log(`(If you typed --env-file, use --from-file: node claims --env-file for itself.)`);
+    console.log(`(If you typed --env-file, use --from-file: node claims --env-file for itself.)`);
     process.exit(1);
   }
 } else {
@@ -103,15 +109,15 @@ function describe(raw) {
 }
 
 function show(label, note, d) {
-  console.log(`  ${B}${label}${O} ${D}${note}${O}`);
+  say(`  ${B}${label}${O} ${D}${note}${O}`);
   if (!d) return bad("    not set");
   if (d.invalid) return bad("    not a valid connection string");
-  console.log(`    host      ${d.host}`);
-  console.log(`    port      ${d.port}${d.port === "6543" ? `  ${D}(Supabase transaction pooler)${O}` : d.port === "5432" ? `  ${D}(direct)${O}` : ""}`);
-  console.log(`    database  ${d.database}`);
-  console.log(`    schema    ${d.schema}`);
-  console.log(`    user      ${d.user}`);
-  console.log(`    password  ${d.hasPassword ? "******** (set)" : `${R}not set${O}`}`);
+  say(`    host      ${d.host}`);
+  say(`    port      ${d.port}${d.port === "6543" ? `  ${D}(Supabase transaction pooler)${O}` : d.port === "5432" ? `  ${D}(direct)${O}` : ""}`);
+  say(`    database  ${d.database}`);
+  say(`    schema    ${d.schema}`);
+  say(`    user      ${d.user}`);
+  say(`    password  ${d.hasPassword ? "******** (set)" : `${R}not set${O}`}`);
 }
 
 /** Inspect one connection. Returns null when it cannot connect. */
@@ -187,7 +193,7 @@ function report(label, state, schema) {
     return false;
   }
   ok(`connected to database "${state.currentDatabase}"`);
-  console.log(`    tables in schema "${schema}": ${state.tables.length}`);
+  say(`    tables in schema "${schema}": ${state.tables.length}`);
 
   const here = state.storedFileSchemas.includes(schema);
   if (here) ok(`public.StoredFile EXISTS`);
@@ -198,17 +204,17 @@ function report(label, state, schema) {
 
   if (!state.migrations) warn(`_prisma_migrations is absent — this database has no migration history`);
   else {
-    console.log(`    migration history (${state.migrations.length}):`);
+    say(`    migration history (${state.migrations.length}):`);
     for (const m of state.migrations) {
       const mark = m.rolled_back ? `${R}rolled back${O}` : m.done ? `${G}applied${O}` : `${Y}started, not finished${O}`;
-      console.log(`      ${m.name}  ${mark}`);
+      say(`      ${m.name}  ${mark}`);
     }
   }
   return here;
 }
 
 // ------------------------------------------------------------------- run
-console.log(`${B}Database doctor${O} ${D}— credentials are never printed${O}`);
+say(`${B}Database doctor${O} ${D}— credentials are never printed${O}`);
 
 const appUrl = process.env.DATABASE_URL;
 const migUrl = process.env.DIRECT_URL;
@@ -217,21 +223,21 @@ const mig = describe(migUrl);
 
 head("Connection strings");
 show("DATABASE_URL", "— the deployed app queries through this", app);
-console.log();
+say();
 if (mig) {
   show("DIRECT_URL", "— migrations run through this", mig);
 } else {
-  console.log(`  ${B}DIRECT_URL${O} ${D}— migrations run through this${O}`);
-  console.log(`    ${D}not in this file — checking through DATABASE_URL alone, which is${O}`);
-  console.log(`    ${D}enough to answer whether the table exists. --fix would need it.${O}`);
+  say(`  ${B}DIRECT_URL${O} ${D}— migrations run through this${O}`);
+  say(`    ${D}not in this file — checking through DATABASE_URL alone, which is${O}`);
+  say(`    ${D}enough to answer whether the table exists. --fix would need it.${O}`);
 }
 
 if (!app || app.invalid) {
-  console.log(`\n${R}${B}DATABASE_URL is not set, or is not a valid connection string.${O}`);
+  say(`\n${R}${B}DATABASE_URL is not set, or is not a valid connection string.${O}`);
   process.exit(1);
 }
 if (mig?.invalid) {
-  console.log(`\n${R}${B}DIRECT_URL is set but is not a valid connection string.${O}`);
+  say(`\n${R}${B}DIRECT_URL is set but is not a valid connection string.${O}`);
   process.exit(1);
 }
 
@@ -242,10 +248,10 @@ const isLocal = LOCAL.has(app.host);
 if (isLocal) {
   head("Careful — this is a local database");
   warn(`DATABASE_URL points at ${app.host}, on this machine.`);
-  console.log(`    Everything below describes that local database and says NOTHING`);
-  console.log(`    about your deployed site. To check the database Vercel uses, run:`);
-  console.log(`      ${B}DATABASE_URL="<your production string>" \\${O}`);
-  console.log(`      ${B}DIRECT_URL="<your production string>" npm run db:doctor${O}`);
+  say(`    Everything below describes that local database and says NOTHING`);
+  say(`    about your deployed site. To check the database Vercel uses, run:`);
+  say(`      ${B}DATABASE_URL="<your production string>" \\${O}`);
+  say(`      ${B}DIRECT_URL="<your production string>" npm run db:doctor${O}`);
 }
 
 // Ask both servers who they are, rather than guessing from the two URLs.
@@ -264,14 +270,14 @@ if (appState.error || migState.error) {
   same = true;
   ok("yes — both connections reach the same database");
   if (app.host !== mig.host) {
-    console.log(`    ${D}(different hostnames, one database — normal on Supabase: the pooled${O}`);
-    console.log(`    ${D}endpoint and the direct one are two doors into the same place)${O}`);
+    say(`    ${D}(different hostnames, one database — normal on Supabase: the pooled${O}`);
+    say(`    ${D}endpoint and the direct one are two doors into the same place)${O}`);
   }
 } else {
   same = false;
   bad("NO — these are genuinely two different databases");
-  console.log(`    DATABASE_URL -> ${app.host}:${app.port}/${app.database}`);
-  console.log(`    DIRECT_URL   -> ${mig.host}:${mig.port}/${mig.database}`);
+  say(`    DATABASE_URL -> ${app.host}:${app.port}/${app.database}`);
+  say(`    DIRECT_URL   -> ${mig.host}:${mig.port}/${mig.database}`);
   warn("a migration applied through DIRECT_URL will never appear to the app");
 }
 if (app.schema !== mig.schema) {
@@ -287,11 +293,11 @@ if (mig && same !== true) report(`Through DIRECT_URL — where migrations land`,
 if (!viaApp && FIX && !mig) {
   head("Repairing");
   bad("--fix needs DIRECT_URL as well — Prisma refuses to run migrations without it.");
-  console.log(`    Add DIRECT_URL to the file, or pass it on the command line.`);
+  say(`    Add DIRECT_URL to the file, or pass it on the command line.`);
 } else if (!viaApp && FIX) {
   head("Repairing");
   const run = (args) => {
-    console.log(`  ${D}$ npx prisma ${args.join(" ")}${O}`);
+    say(`  ${D}$ npx prisma ${args.join(" ")}${O}`);
     try {
       execFileSync("npx", ["prisma", ...args], { stdio: ["ignore", "pipe", "pipe"], env: process.env })
         .toString().split("\n").filter(Boolean).slice(-3).forEach((l) => console.log(`    ${l}`));
@@ -309,17 +315,56 @@ if (!viaApp && FIX && !mig) {
   const hasHistory = state && !state.error && state.migrations !== null;
 
   if (hasTables && !hasHistory) {
-    console.log(`  ${D}database has tables but no history — baselining first${O}`);
+    say(`  ${D}database has tables but no history — baselining first${O}`);
     run(["migrate", "resolve", "--applied", BASELINE]);
   } else if (!hasTables) {
-    console.log(`  ${D}database is empty — applying every migration${O}`);
+    say(`  ${D}database is empty — applying every migration${O}`);
   } else {
-    console.log(`  ${D}history already present — applying what is pending${O}`);
+    say(`  ${D}history already present — applying what is pending${O}`);
   }
   run(["migrate", "deploy"]);
 
   head("Re-checking THROUGH DATABASE_URL (the one the site uses)");
   viaApp = report("Result", await inspect(appUrl, app.schema), app.schema);
+}
+
+// -------------------------------------------------------------- summary
+/**
+ * The four lines, and only those, when --summary is passed. Printed from the
+ * same values the full report uses, so the two can never disagree.
+ */
+function printSummary(state, reachable) {
+  if (!SUMMARY) return;
+  const host = app?.host ?? "";
+  const isSupabase = /(^|\.)supabase\.(co|com)$/i.test(host) || /supabase/i.test(host);
+
+  const l1 = app && !app.invalid ? "présente" : "absente";
+  const l2 = !app || app.invalid ? "indéterminé" : isSupabase ? `oui (${host})` : `non (${host})`;
+
+  let l3;
+  if (!reachable) l3 = "indéterminé — connexion impossible";
+  else l3 = state.storedFileSchemas.includes(app.schema)
+    ? "existe"
+    : state.storedFileSchemas.length
+      ? `n'existe pas dans "${app.schema}" (présente dans : ${state.storedFileSchemas.join(", ")})`
+      : "n'existe pas";
+
+  let l4;
+  if (!reachable) l4 = "indéterminé — connexion impossible";
+  else if (!state.migrations) l4 = "aucun historique (_prisma_migrations absente)";
+  else if (state.migrations.length === 0) l4 = "historique présent mais vide";
+  else {
+    const done = state.migrations.filter((m) => m.done && !m.rolled_back);
+    const pending = state.migrations.filter((m) => !m.done || m.rolled_back);
+    l4 = pending.length === 0
+      ? `${done.length}/${state.migrations.length} appliquées — ${done.map((m) => m.name).join(", ")}`
+      : `${done.length}/${state.migrations.length} appliquées, en attente : ${pending.map((m) => m.name).join(", ")}`;
+  }
+
+  console.log(`DATABASE_URL Production : ${l1}`);
+  console.log(`Base Production : ${l2}`);
+  console.log(`public.StoredFile : ${l3}`);
+  console.log(`Migrations : ${l4}`);
 }
 
 // -------------------------------------------------------------- clean up
@@ -332,57 +377,61 @@ function removeEnvFile() {
     const size = fs.statSync(resolved).size;
     fs.writeFileSync(resolved, "\0".repeat(size));
     fs.unlinkSync(resolved);
-    console.log(`\n  ${G}✓${O} ${ENV_FILE} overwritten and deleted`);
+    say(`\n  ${G}✓${O} ${ENV_FILE} overwritten and deleted`);
   } catch (e) {
-    console.log(`\n  ${Y}!${O} could not delete ${ENV_FILE}: ${e.message}`);
-    console.log(`    Delete it yourself — it holds production credentials.`);
+    say(`\n  ${Y}!${O} could not delete ${ENV_FILE}: ${e.message}`);
+    say(`    Delete it yourself — it holds production credentials.`);
   }
 }
 
 // ------------------------------------------------------------------- verdict
 head("Verdict");
 if (viaApp && isLocal) {
-  console.log(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
-  console.log(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
-  console.log(`  connection strings before deciding whether to redeploy.`);
+  say(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
+  say(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
+  say(`  connection strings before deciding whether to redeploy.`);
+  printSummary(appState, appReachable);
   removeEnvFile();
   process.exit(0);
 }
 if (viaApp) {
-  console.log(`  ${G}${B}The database the app reads has public.StoredFile.${O}`);
-  console.log(`  ${D}(host ${app.host} — check this is the host Vercel uses.)${O}`);
-  console.log(`  You can redeploy on Vercel.`);
-  console.log(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
-  console.log(`  ${D}Vercel keeps previous logs, and an old line is not a new failure.${O}`);
+  say(`  ${G}${B}The database the app reads has public.StoredFile.${O}`);
+  say(`  ${D}(host ${app.host} — check this is the host Vercel uses.)${O}`);
+  say(`  You can redeploy on Vercel.`);
+  say(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
+  say(`  ${D}Vercel keeps previous logs, and an old line is not a new failure.${O}`);
+  printSummary(appState, appReachable);
   removeEnvFile();
   process.exit(0);
 }
 if (!appReachable) {
-  console.log(`  ${R}${B}Could not connect through DATABASE_URL at all.${O}`);
-  console.log(`  This is not a migration problem — nothing can be applied or checked`);
-  console.log(`  until the connection works. Common causes, in order:`);
-  console.log(`    - the password in the string is wrong, or was rotated`);
-  console.log(`    - the database name or host is not the one you think`);
-  console.log(`    - the user has no rights on that database`);
-  console.log(`    - the host refuses connections from your network`);
-  console.log(`  Copy the string again from your provider, and check it is the value`);
-  console.log(`  Vercel has for Production.`);
+  say(`  ${R}${B}Could not connect through DATABASE_URL at all.${O}`);
+  say(`  This is not a migration problem — nothing can be applied or checked`);
+  say(`  until the connection works. Common causes, in order:`);
+  say(`    - the password in the string is wrong, or was rotated`);
+  say(`    - the database name or host is not the one you think`);
+  say(`    - the user has no rights on that database`);
+  say(`    - the host refuses connections from your network`);
+  say(`  Copy the string again from your provider, and check it is the value`);
+  say(`  Vercel has for Production.`);
+  printSummary(appState, appReachable);
   removeEnvFile();
   process.exit(1);
 }
-console.log(`  ${R}${B}The database the app reads does NOT have public.StoredFile.${O}`);
+say(`  ${R}${B}The database the app reads does NOT have public.StoredFile.${O}`);
 if (same === false) {
-  console.log(`  The two URLs reach different databases. Fix that first: DATABASE_URL and`);
-  console.log(`  DIRECT_URL must be two endpoints of the SAME database — on Supabase, the`);
-  console.log(`  pooled string (port 6543) and the direct one (port 5432) of one project.`);
+  say(`  The two URLs reach different databases. Fix that first: DATABASE_URL and`);
+  say(`  DIRECT_URL must be two endpoints of the SAME database — on Supabase, the`);
+  say(`  pooled string (port 6543) and the direct one (port 5432) of one project.`);
 } else if (!FIX) {
-  console.log(`  Run:  ${B}npm run db:doctor -- --fix${O}`);
-  console.log(`  It baselines only if needed, applies the missing migration, and re-checks.`);
-  console.log(`  It never drops or resets anything.`);
+  say(`  Run:  ${B}npm run db:doctor -- --fix${O}`);
+  say(`  It baselines only if needed, applies the missing migration, and re-checks.`);
+  say(`  It never drops or resets anything.`);
 } else {
-  console.log(`  The repair ran and the table is still missing. Read the errors above.`);
+  say(`  The repair ran and the table is still missing. Read the errors above.`);
 }
-console.log(`\n  ${D}Also confirm these same two values are set in Vercel -> Settings ->${O}`);
-console.log(`  ${D}Environment Variables for Production, and redeploy after changing them.${O}`);
+say(`\n  ${D}Also confirm these same two values are set in Vercel -> Settings ->${O}`);
+say(`  ${D}Environment Variables for Production, and redeploy after changing them.${O}`);
+printSummary(appState, appReachable);
 removeEnvFile();
 process.exit(1);
