@@ -17,6 +17,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin", label: "Dashboard", icon: "home", exact: true },
       { href: "/admin/builder", label: "Website Builder", icon: "layers", permission: "content.edit" },
+      { href: "/admin/ai", label: "AI Assistant", icon: "sparkles", permission: "content.edit" },
     ],
   },
   {

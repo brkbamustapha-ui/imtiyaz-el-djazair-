@@ -7,9 +7,15 @@ import { Icon } from "@/components/ui/Icon";
 import { safeHref } from "@/lib/utils";
 import { ls, str, SectionHeading, SectionShell, type SectionProps } from "./helpers";
 
+/**
+ * The badge under each logo. It states the nature of the relationship and
+ * nothing more: none of these organisations owns, runs or accredits the school,
+ * and the wording must never let a visitor read it that way.
+ */
 const TYPE_LABEL: Record<string, string> = {
   PARTNER: "Partner",
   SPONSOR: "Sponsor",
+  IELTS_PARTNERSHIP: "British Council IELTS Partnership",
   CERTIFICATION: "Certification",
   ASSOCIATION: "Association",
 };

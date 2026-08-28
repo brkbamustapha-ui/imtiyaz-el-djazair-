@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
  */
 export function SiteLogo({
   src,
+  size,
   siteName,
   tagline,
   className,
@@ -22,6 +23,13 @@ export function SiteLogo({
   priority = false,
 }: {
   src: string | null;
+  /**
+   * The file's real pixel size, when it is known (see getBrandLogos). It only
+   * sets the box <Image> reserves before the artwork arrives — `object-contain`
+   * below is what guarantees the mark itself is never stretched or cropped,
+   * whatever shape the owner uploads.
+   */
+  size?: { width: number; height: number } | null;
   siteName: string;
   tagline?: string;
   className?: string;
@@ -50,8 +58,8 @@ export function SiteLogo({
         <Image
           src={src}
           alt={siteName}
-          width={320}
-          height={320}
+          width={size?.width ?? 320}
+          height={size?.height ?? 320}
           priority={priority}
           className={cn("w-auto shrink-0 object-contain", imageClassName)}
           unoptimized={src.endsWith(".svg")}

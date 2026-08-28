@@ -31,7 +31,9 @@ async function hashPassword(password: string) {
 }
 
 const json = (value: unknown) => JSON.stringify(value ?? {});
-const demoEnabled = process.env.SEED_DEMO_CONTENT !== "false";
+// Opt-in, not opt-out: a fresh production database must never come up carrying
+// invented statistics, testimonials or news. See seedDemoContent().
+const demoEnabled = process.env.SEED_DEMO_CONTENT === "true";
 
 async function seedSuperAdmin() {
   const email = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
@@ -198,6 +200,8 @@ const HEADER_MENU = [
   { label: { en: "Programs", fr: "Programmes", ar: "البرامج" }, href: "/programs" },
   { label: { en: "IELTS", fr: "IELTS", ar: "آيلتس" }, href: "/ielts" },
   { label: { en: "Exam Center", fr: "Centre d'examen", ar: "مركز الامتحانات" }, href: "/exam-center" },
+  { label: { en: "Summer Camp", fr: "Summer Camp", ar: "المخيم الصيفي" }, href: "/summer-camp" },
+  { label: { en: "Gallery", fr: "Galerie", ar: "المعرض" }, href: "/gallery" },
   { label: { en: "News", fr: "Actualités", ar: "الأخبار" }, href: "/news" },
   { label: { en: "Contact", fr: "Contact", ar: "اتصل بنا" }, href: "/contact" },
 ];
@@ -293,9 +297,18 @@ const PAGES: PageSpec[] = [
                                     },
                                     "src": "/assets/video/school-03.mp4",
                                     "poster": "/assets/video/posters/school-03.webp"
+                          },
+                          {
+                                    "title": {
+                                              "en": "IELTS candidate interview",
+                                              "fr": "Interview d'un candidat IELTS",
+                                              "ar": "مقابلة مع مترشّح للآيلتس"
+                                    },
+                                    "src": "/assets/video/school-04.mp4",
+                                    "poster": "/assets/video/posters/school-04.webp"
                           }
                 ],
-                "columns": "3",
+                "columns": "4",
                 "tone": "surface",
                 "primaryCta": [
                           {
@@ -319,7 +332,7 @@ const PAGES: PageSpec[] = [
       },
       { type: "valueCards", name: "Mission, vision, approach" },
       { type: "gallery", name: "Campus gallery", overrides: { limit: 24 } },
-      { type: "videoGallery", name: "Summer Camp", overrides: { tone: "default" } },
+      { type: "summerCamp", name: "Summer Camp", overrides: { tone: "default" } },
       { type: "testimonials", name: "Student testimonials" },
       { type: "news", name: "Latest news" },
       { type: "faq", name: "FAQ" },
@@ -405,6 +418,35 @@ const PAGES: PageSpec[] = [
       { type: "featureGrid", name: "On the day" },
       { type: "gallery", name: "Facilities" },
       { type: "faq", name: "FAQ" },
+      { type: "contact", name: "Contact" },
+    ],
+  },
+  {
+    slug: "summer-camp",
+    title: "Summer Camp",
+    seo: {
+      title: "Summer Camp — Imtiyaz El Djazair",
+      description:
+        "The Imtiyaz El Djazair summer camp, filmed on site: activities outside the classroom alongside English practice.",
+    },
+    sections: [
+      {
+        type: "summerCamp",
+        name: "Summer Camp",
+        overrides: {
+          tone: "default",
+          // The page's own hero, so the block carries the h1-sized promise.
+          primaryCta: [
+            {
+              label: { en: "Ask about the camp", fr: "Se renseigner sur le camp", ar: "استفسر عن المخيم" },
+              href: "/contact",
+            },
+          ],
+          secondaryCta: [],
+        },
+      },
+      { type: "gallery", name: "Camp gallery", overrides: { limit: 16 } },
+      { type: "cta", name: "Call to action" },
       { type: "contact", name: "Contact" },
     ],
   },
@@ -521,17 +563,19 @@ async function seedForms() {
 // purpose: the admin shows guidance about confirming each relationship
 // before publishing claims about it.
 const PARTNERS = [
+  // British Council and IELTS are shown under the partnership label, never as
+  // an accreditation of the school and never as its owner.
   {
     name: "British Council",
     logoUrl: "/assets/partners/british-council.png",
-    type: "PARTNER",
+    type: "IELTS_PARTNERSHIP",
     description: "",
     website: "",
   },
   {
     name: "IELTS",
     logoUrl: "/assets/partners/ielts.png",
-    type: "CERTIFICATION",
+    type: "IELTS_PARTNERSHIP",
     description: "",
     website: "",
   },
@@ -552,7 +596,7 @@ const PARTNERS = [
   {
     name: "TOLES Legal",
     logoUrl: "/assets/partners/toles.png",
-    type: "CERTIFICATION",
+    type: "PARTNER",
     description: "",
     website: "",
   },
@@ -776,12 +820,13 @@ const GALLERY = [
   { title: json({ en: "Exam room set up for a session", fr: "Salle d'examen prête pour une session", ar: "قاعة امتحان جاهزة للجلسة" }), album: "Exam Center", imageUrl: "/assets/photos/exam-room-02.webp" },
 ];
 
-async function seedDemoContent() {
-  if (!demoEnabled) {
-    console.log("· SEED_DEMO_CONTENT=false — demo content skipped");
-    return;
-  }
-
+/**
+ * Content that describes things the project can actually evidence: the partner
+ * logos committed under public/assets/partners, the photographs under
+ * public/assets/photos, the courses the school runs and answers to questions it
+ * is actually asked. None of it is invented, so it is seeded unconditionally.
+ */
+async function seedRealContent() {
   if ((await db.partner.count()) === 0) {
     await db.partner.createMany({
       data: PARTNERS.map((partner, index) => ({ ...partner, order: index, isActive: true, isVerified: false })),
@@ -792,16 +837,6 @@ async function seedDemoContent() {
       data: SERVICES.map((service, index) => ({ ...service, order: index, isActive: true })),
     });
   }
-  if ((await db.stat.count()) === 0) {
-    await db.stat.createMany({
-      data: STATS.map((stat, index) => ({ ...stat, order: index, isActive: true })),
-    });
-  }
-  if ((await db.testimonial.count()) === 0) {
-    await db.testimonial.createMany({
-      data: TESTIMONIALS.map((item, index) => ({ ...item, order: index, isActive: true, photoUrl: "" })),
-    });
-  }
   if ((await db.faqItem.count()) === 0) {
     await db.faqItem.createMany({
       data: FAQ.map((item, index) => ({ ...item, order: index, isActive: true })),
@@ -810,6 +845,32 @@ async function seedDemoContent() {
   if ((await db.galleryItem.count()) === 0) {
     await db.galleryItem.createMany({
       data: GALLERY.map((item, index) => ({ ...item, order: index, isActive: true })),
+    });
+  }
+  console.log("✓ Partners, services, FAQ and gallery ensured from the committed assets");
+}
+
+/**
+ * Everything below is INVENTED: student numbers nobody has counted, quotes no
+ * student gave, announcements that never happened. Publishing it would put
+ * false claims on a real school's website, so it stays off unless someone opts
+ * in with SEED_DEMO_CONTENT=true — useful for a design review, never for
+ * production. The owner adds the real figures, quotes and news from /admin.
+ */
+async function seedDemoContent() {
+  if (!demoEnabled) {
+    console.log("· SEED_DEMO_CONTENT is not \"true\" — invented stats, testimonials and news skipped");
+    return;
+  }
+
+  if ((await db.stat.count()) === 0) {
+    await db.stat.createMany({
+      data: STATS.map((stat, index) => ({ ...stat, order: index, isActive: true })),
+    });
+  }
+  if ((await db.testimonial.count()) === 0) {
+    await db.testimonial.createMany({
+      data: TESTIMONIALS.map((item, index) => ({ ...item, order: index, isActive: true, photoUrl: "" })),
     });
   }
   if ((await db.post.count()) === 0) {
@@ -845,6 +906,7 @@ async function main() {
   await seedMenu();
   await seedPages();
   await seedForms();
+  await seedRealContent();
   await seedDemoContent();
   console.log("\nDone. Sign in at /admin\n");
 }

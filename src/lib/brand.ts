@@ -2,8 +2,9 @@ import "server-only";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { cache } from "react";
+import sharp from "sharp";
 import { getSetting } from "./settings";
-import { fileExists } from "./storage";
+import { fileExists, getFile, keyFromMediaUrl } from "./storage";
 
 /**
  * The logo is ALWAYS a real image file supplied by the school — nothing is
@@ -46,11 +47,46 @@ function isSuppliedFile(url: string | undefined): url is string {
 export type BrandLogos = {
   /** Logo for the site's own background. Null when no file has been supplied. */
   primary: string | null;
+  /**
+   * The primary logo's real pixel size, when it could be read.
+   *
+   * <Image> needs width/height to reserve a box before the file arrives. Giving
+   * it invented numbers reserves the wrong shape: the school's mark is roughly
+   * 1:2, so a square guess reserves a box twice too wide and the header jumps
+   * when the image lands. `object-contain` keeps the artwork itself undistorted
+   * either way — this is about the space around it.
+   */
+  primarySize: { width: number; height: number } | null;
   /** Optional light-coloured variant for dark surfaces. */
   onDark: string | null;
   favicon: string | null;
   ogImage: string | null;
 };
+
+/** Reads the intrinsic size of a supplied logo, wherever it is stored. */
+async function measure(url: string | null): Promise<{ width: number; height: number } | null> {
+  if (!url) return null;
+  // SVG has no meaningful pixel size and scales cleanly; nothing to reserve.
+  if (url.endsWith(".svg")) return null;
+  try {
+    if (url.startsWith("/assets/")) {
+      const metadata = await sharp(path.join(process.cwd(), "public", url)).metadata();
+      return metadata.width && metadata.height
+        ? { width: metadata.width, height: metadata.height }
+        : null;
+    }
+    const key = keyFromMediaUrl(url);
+    if (!key) return null;
+    const blob = await getFile(key, false);
+    if (!blob) return null;
+    const metadata = await sharp(Buffer.from(blob.data)).metadata();
+    return metadata.width && metadata.height
+      ? { width: metadata.width, height: metadata.height }
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export const getBrandLogos = cache(async function getBrandLogos(): Promise<BrandLogos> {
   const general = await getSetting("general");
@@ -62,5 +98,11 @@ export const getBrandLogos = cache(async function getBrandLogos(): Promise<Brand
     isSuppliedFile(general.ogImageUrl) ? general.ogImageUrl : findSuppliedFile("og-image"),
   ]);
 
-  return { primary: logo, onDark: logoDark, favicon, ogImage };
+  return {
+    primary: logo,
+    primarySize: await measure(logo),
+    onDark: logoDark,
+    favicon,
+    ogImage,
+  };
 });

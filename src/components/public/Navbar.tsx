@@ -48,6 +48,7 @@ export async function Navbar() {
       logo={
         <SiteLogo
           src={logos.onDark ?? logos.primary}
+          size={logos.onDark ? null : logos.primarySize}
           siteName={settings.general.siteName}
           tagline={t(settings.general.tagline, locale)}
           imageClassName="h-11 md:h-14"

@@ -172,6 +172,7 @@ export const DEFAULT_CONTACT_FIELDS: FormFieldDef[] = [
       "IELTS preparation",
       "IELTS registration",
       "English courses",
+      "Summer Camp",
       "Exam centre",
       "Other",
     ],

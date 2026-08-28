@@ -151,6 +151,7 @@ export const COLLECTIONS: Record<CollectionKey, CollectionDefinition> = {
         options: [
           { value: "PARTNER", label: "Partner" },
           { value: "SPONSOR", label: "Sponsor" },
+          { value: "IELTS_PARTNERSHIP", label: "British Council IELTS Partnership" },
           { value: "CERTIFICATION", label: "Certification" },
           { value: "ASSOCIATION", label: "Association" },
         ],

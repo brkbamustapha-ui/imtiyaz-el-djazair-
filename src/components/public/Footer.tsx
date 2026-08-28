@@ -78,6 +78,7 @@ export async function Footer() {
         <div className="max-w-sm">
           <SiteLogo
             src={logos.onDark ?? logos.primary}
+            size={logos.onDark ? null : logos.primarySize}
             siteName={general.siteName}
             tagline={t(general.tagline, locale)}
             imageClassName="h-16"
