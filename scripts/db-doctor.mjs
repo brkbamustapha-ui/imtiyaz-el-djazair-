@@ -285,7 +285,11 @@ if (app.schema !== mig.schema) {
 }
 }
 
-const appReachable = !appState.error && Boolean(appState.tables);
+let appReachable = !appState.error && Boolean(appState.tables);
+// The summary must describe the state the run ENDS in. --fix re-inspects below
+// and replaces these; otherwise a successful repair still reports the broken
+// state it started from.
+let finalState = appState;
 let viaApp = report(`Through DATABASE_URL — what the deployed site actually sees`, appState, app.schema);
 if (mig && same !== true) report(`Through DIRECT_URL — where migrations land`, migState, mig.schema);
 
@@ -300,11 +304,11 @@ if (!viaApp && FIX && !mig) {
     say(`  ${D}$ npx prisma ${args.join(" ")}${O}`);
     try {
       execFileSync("npx", ["prisma", ...args], { stdio: ["ignore", "pipe", "pipe"], env: process.env })
-        .toString().split("\n").filter(Boolean).slice(-3).forEach((l) => console.log(`    ${l}`));
+        .toString().split("\n").filter(Boolean).slice(-3).forEach((l) => say(`    ${l}`));
       return true;
     } catch (e) {
       const out = `${e.stdout ?? ""}${e.stderr ?? ""}`.split("\n").filter(Boolean).slice(-4);
-      out.forEach((l) => console.log(`    ${R}${l}${O}`));
+      out.forEach((l) => say(`    ${R}${l}${O}`));
       return false;
     }
   };
@@ -325,7 +329,9 @@ if (!viaApp && FIX && !mig) {
   run(["migrate", "deploy"]);
 
   head("Re-checking THROUGH DATABASE_URL (the one the site uses)");
-  viaApp = report("Result", await inspect(appUrl, app.schema), app.schema);
+  finalState = await inspect(appUrl, app.schema);
+  appReachable = !finalState.error && Boolean(finalState.tables);
+  viaApp = report("Result", finalState, app.schema);
 }
 
 // -------------------------------------------------------------- summary
@@ -390,7 +396,7 @@ if (viaApp && isLocal) {
   say(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
   say(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
   say(`  connection strings before deciding whether to redeploy.`);
-  printSummary(appState, appReachable);
+  printSummary(finalState, appReachable);
   removeEnvFile();
   process.exit(0);
 }
@@ -400,7 +406,7 @@ if (viaApp) {
   say(`  You can redeploy on Vercel.`);
   say(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
   say(`  ${D}Vercel keeps previous logs, and an old line is not a new failure.${O}`);
-  printSummary(appState, appReachable);
+  printSummary(finalState, appReachable);
   removeEnvFile();
   process.exit(0);
 }
@@ -414,7 +420,7 @@ if (!appReachable) {
   say(`    - the host refuses connections from your network`);
   say(`  Copy the string again from your provider, and check it is the value`);
   say(`  Vercel has for Production.`);
-  printSummary(appState, appReachable);
+  printSummary(finalState, appReachable);
   removeEnvFile();
   process.exit(1);
 }
@@ -432,6 +438,6 @@ if (same === false) {
 }
 say(`\n  ${D}Also confirm these same two values are set in Vercel -> Settings ->${O}`);
 say(`  ${D}Environment Variables for Production, and redeploy after changing them.${O}`);
-printSummary(appState, appReachable);
+printSummary(finalState, appReachable);
 removeEnvFile();
 process.exit(1);
