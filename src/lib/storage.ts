@@ -61,10 +61,27 @@ export async function getFile(key: string, wantPrivate: boolean): Promise<Stored
   return { data: row.data, mimeType: row.mimeType, size: row.size };
 }
 
+/**
+ * Optional lookup: "has the owner uploaded a brand file under this name?"
+ *
+ * It fails soft on purpose. getBrandLogos() calls this from the ROOT layout, so
+ * a throw here does not break one image — it breaks every page of the site,
+ * the login screen included, and leaves no way in to fix whatever caused it.
+ * A database that cannot answer means "no uploaded file", and the caller falls
+ * back to the artwork committed under public/assets/logo.
+ *
+ * This mirrors getSetting(), which already falls back to defaults rather than
+ * taking the site down. Requests for a specific file still fail loudly —
+ * getFile() below does not swallow anything.
+ */
 export async function fileExists(key: string): Promise<boolean> {
   if (!isValidKey(key)) return false;
-  const row = await db.storedFile.findUnique({ where: { key }, select: { key: true } });
-  return row !== null;
+  try {
+    const row = await db.storedFile.findUnique({ where: { key }, select: { key: true } });
+    return row !== null;
+  } catch {
+    return false;
+  }
 }
 
 /** Deleting a key that is not there is not an error — the goal is that it is gone. */

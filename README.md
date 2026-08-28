@@ -370,6 +370,23 @@ the table exists; `DIRECT_URL` is only needed for `--fix`.
 password, a secret or a connection string — only host, port, database name,
 schema and user.
 
+### Which database is the deployed runtime actually using?
+
+Only the running process knows. On startup it logs one line, visible in the
+platform's runtime log next to the errors you are reading:
+
+```
+[db] connecting to aws-0-eu-west-3.pooler.supabase.com:6543/postgres schema=public
+```
+
+Host, database and schema only — never the user, the password or the string.
+If that host is not the one you migrated, the migration went somewhere the site
+never looks, and no amount of re-running it will help.
+
+There is exactly one Prisma client in the application (`src/lib/db.ts`), it
+overrides no datasource, and the schema reads only `DATABASE_URL` and
+`DIRECT_URL`. So that log line is the whole truth about where queries go.
+
 ### When the site is deployed and still says a table does not exist
 
 Run this first — it answers the question rather than guessing at it:
@@ -398,7 +415,7 @@ The four things it separates:
 | `StoredFile does not exist … in any schema` | The migration has not been applied here. Run `npm run db:doctor -- --fix`. |
 | `NO — these are genuinely two different databases` | The two URLs reach different databases. Fix the values; on Supabase they must be the pooled (6543) and direct (5432) strings of **one** project. Sameness is decided by asking each server for its identity, not by comparing the two strings — Supabase gives one database two hostnames, and comparing text would flag a correct setup. |
 | `StoredFile is NOT in "public" — it is in: X` | Right database, wrong schema. Align the `?schema=` parameter on both URLs. |
-| `public.StoredFile EXISTS` | The database is fine. If Vercel still shows the error, check the log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. |
+| `public.StoredFile EXISTS` | The database is fine. Check the failing log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. Then check the `[db] connecting to …` line from the same deployment: if its host differs from the one you checked, the runtime is on a different database, most often because the deployment is a Preview build reading Preview variables rather than Production ones. |
 
 `npm run db:doctor -- --fix` baselines only when the database already has tables
 but no history, applies the pending migrations, then re-checks **through
