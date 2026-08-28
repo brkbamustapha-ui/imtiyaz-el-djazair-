@@ -370,6 +370,46 @@ the table exists; `DIRECT_URL` is only needed for `--fix`.
 password, a secret or a connection string — only host, port, database name,
 schema and user.
 
+### A baseline that was not true: "public.X does not exist" with a complete history
+
+`prisma migrate resolve --applied` records a migration as done **without running
+its SQL**. That is right only when the database already contains everything the
+migration describes. When it does not, the tables are never created and Prisma
+believes they are — so `migrate status` reports *Database schema is up to date*
+while the site fails on a table that was never made.
+
+Reads hide this for a long time: `getSetting()` falls back to defaults when the
+query throws, so a missing `SiteSetting` is invisible until something writes.
+
+**Never baseline to make an error go away.** Check first, with the command
+below; it lists every table the schema declares against what the database has:
+
+```bash
+npm run db:doctor -- --from-file .env.production --summary
+```
+
+The last line is the one that matters:
+
+```
+Tables manquantes : 3 — SiteSetting, FaqItem, MenuItem
+```
+
+To repair without baselining anything, run
+`prisma/migrations/RUN_IN_SUPABASE_create_missing_tables.sql` in the SQL editor.
+It is the real statements from `20260827000000_init`, each guarded so it skips
+whatever already exists — `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT
+EXISTS`, and foreign keys wrapped in a check against `pg_constraint`. No DROP,
+TRUNCATE, DELETE or UPDATE. Existing tables and their rows are untouched, and a
+second run does nothing.
+
+Then confirm with the check that actually compares reality to the schema —
+`migrate status` only reads the history and will not catch this:
+
+```bash
+npx prisma migrate diff --from-url "$DIRECT_URL" \
+  --to-schema-datamodel prisma/schema.prisma --exit-code   # 0 = in sync
+```
+
 ### `migrate deploy` alone will not work on this database — P3005
 
 A database created with `db push` has tables but no migration history, and

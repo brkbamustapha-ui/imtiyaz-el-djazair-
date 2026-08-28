@@ -39,6 +39,23 @@ const BASELINE = "20260827000000_init";
 // failing with a bare "node: <file>: not found" before this script ever runs.
 // The old spelling is still accepted — if it reaches us the file exists — but
 // --from-file is the one that behaves the same whether the file is there or not.
+/**
+ * Every table the schema expects.
+ *
+ * This used to ask about StoredFile alone, which is exactly how a database
+ * missing SiteSetting passed inspection: the one table it checked happened to
+ * be there. A report that answers "is the database complete?" has to compare
+ * the whole list, not the table that broke last time.
+ */
+function expectedTables() {
+  try {
+    const schema = fs.readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+    return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((m) => m[1]);
+  } catch {
+    return [];
+  }
+}
+
 function flagValue(...names) {
   for (const name of names) {
     const i = process.argv.indexOf(name);
@@ -195,6 +212,16 @@ function report(label, state, schema) {
   ok(`connected to database "${state.currentDatabase}"`);
   say(`    tables in schema "${schema}": ${state.tables.length}`);
 
+  // The whole picture first: anything the schema declares and the database lacks.
+  const expected = expectedTables();
+  const missing = expected.filter((t) => !state.tables.includes(t));
+  if (expected.length && missing.length === 0) {
+    ok(`all ${expected.length} tables the schema expects are present`);
+  } else if (missing.length) {
+    bad(`${missing.length} of ${expected.length} tables are MISSING: ${missing.join(", ")}`);
+    warn(`a recorded migration whose SQL never ran leaves exactly this state`);
+  }
+
   const here = state.storedFileSchemas.includes(schema);
   if (here) ok(`public.StoredFile EXISTS`);
   else if (state.storedFileSchemas.length) {
@@ -347,6 +374,9 @@ function printSummary(state, reachable) {
   const l1 = app && !app.invalid ? "présente" : "absente";
   const l2 = !app || app.invalid ? "indéterminé" : isSupabase ? `oui (${host})` : `non (${host})`;
 
+  const expected = expectedTables();
+  const missing = reachable ? expected.filter((t) => !state.tables.includes(t)) : [];
+
   let l3;
   if (!reachable) l3 = "indéterminé — connexion impossible";
   else l3 = state.storedFileSchemas.includes(app.schema)
@@ -371,6 +401,13 @@ function printSummary(state, reachable) {
   console.log(`Base Production : ${l2}`);
   console.log(`public.StoredFile : ${l3}`);
   console.log(`Migrations : ${l4}`);
+  console.log(
+    `Tables manquantes : ${
+      !reachable ? "indéterminé — connexion impossible"
+      : missing.length === 0 ? `aucune (${expected.length}/${expected.length})`
+      : `${missing.length} — ${missing.join(", ")}`
+    }`,
+  );
 }
 
 // -------------------------------------------------------------- clean up
