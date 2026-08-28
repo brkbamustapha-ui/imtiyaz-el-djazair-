@@ -152,7 +152,12 @@ export function NavbarClient({
 
           <div className="flex items-center gap-1.5">
             <div className="hidden sm:block">{localeSwitcher}</div>
-            <Link href={safeHref(ctaHref)} className="btn btn-primary btn-sm hidden md:inline-flex">
+            {/* whitespace-nowrap: the pill has a fixed min-height, so a label that
+                wraps to two lines spills out of it. */}
+            <Link
+              href={safeHref(ctaHref)}
+              className="btn btn-primary btn-sm hidden whitespace-nowrap md:inline-flex"
+            >
               {ctaLabel}
             </Link>
             <button

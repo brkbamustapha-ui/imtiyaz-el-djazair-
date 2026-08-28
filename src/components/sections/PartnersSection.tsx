@@ -41,14 +41,14 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
             {doubled.map((partner, index) => (
               <span
                 key={`${partner.id}-${index}`}
-                className="flex h-16 shrink-0 items-center rounded-[var(--radius-sm)] bg-white px-5"
+                className="flex h-20 shrink-0 items-center rounded-[var(--radius-sm)] bg-white px-5 py-3"
               >
                 <Image
                   src={partner.logoUrl}
                   alt={partner.name}
-                  width={170}
-                  height={60}
-                  className="h-10 w-auto max-w-[170px] object-contain"
+                  width={200}
+                  height={200}
+                  className="max-h-full w-auto max-w-[180px] object-contain"
                 />
               </span>
             ))}
@@ -76,13 +76,19 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
               <article className="card card-hover flex h-full flex-col p-7">
                 {/* Light plate: partner artwork is mostly dark-on-transparent,
                     which would disappear against the site's dark surfaces. */}
-                <div className="flex h-24 items-center justify-center rounded-[var(--radius-sm)] bg-white px-6 py-3">
+                {/* The plate is a fixed box and the logo fills it as far as its
+                    own aspect ratio allows. Capping height alone made a square
+                    crest (Manchester City, TOLES) render a quarter the optical
+                    size of a wide wordmark next to it — the sponsor's mark
+                    looked like an afterthought. object-contain still means
+                    nothing is ever stretched or cropped. */}
+                <div className="flex h-28 items-center justify-center rounded-[var(--radius-sm)] bg-white p-4">
                   <Image
                     src={partner.logoUrl}
                     alt={partner.name}
-                    width={220}
-                    height={72}
-                    className="max-h-16 w-auto max-w-[200px] object-contain"
+                    width={240}
+                    height={240}
+                    className="max-h-full w-auto max-w-full object-contain"
                   />
                 </div>
                 <div className="mt-5 flex items-center gap-2">

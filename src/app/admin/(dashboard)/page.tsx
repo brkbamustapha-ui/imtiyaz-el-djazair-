@@ -95,14 +95,17 @@ export default async function DashboardPage() {
 
       {general.demoContentNotice && (
         <div className="mb-6">
+          {/* The partner logos and campus photos are the school's own files, and
+              invented statistics and articles are no longer seeded — so the old
+              wording named the wrong things. What is genuinely still unset is
+              the contact block, and that is what a visitor sees first. */}
           <Notice tone="warn">
-            <strong>This site still contains demo content.</strong> Replace the placeholder
-            partner logos, photos, statistics and articles before going live — then turn this
-            reminder off in{" "}
+            <strong>Your contact details are still placeholders.</strong> The address, phone
+            number and email shown on the site are stand-ins — add the real ones in{" "}
             <Link href="/admin/settings" className="underline underline-offset-2">
               Site settings
             </Link>
-            .
+            , where you can also turn this reminder off.
           </Notice>
         </div>
       )}

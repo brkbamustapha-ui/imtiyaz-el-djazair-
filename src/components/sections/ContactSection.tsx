@@ -6,6 +6,7 @@ import { DynamicForm } from "@/components/public/DynamicForm";
 import { Reveal } from "@/components/ui/Reveal";
 import { Icon } from "@/components/ui/Icon";
 import { t } from "@/lib/i18n";
+import { safeHref } from "@/lib/utils";
 import { DEFAULT_CONTACT_FIELDS, type FormFieldDef } from "@/lib/forms";
 import { bool, ls, str, SectionHeading, SectionShell, type SectionProps } from "./helpers";
 
@@ -112,14 +113,17 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
                 <ul className="mt-4 flex flex-wrap gap-2.5">
                   {links.map((link) => (
                     <li key={link.icon}>
+                      {/* Named, not just an icon: three unlabelled glyphs in a row
+                          read as decoration, and a visitor looking for the
+                          school's Instagram does not find it. */}
                       <a
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={link.label}
-                        className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--c-border)] bg-[rgb(var(--c-accent-rgb)/0.08)] text-[var(--c-accent)] transition-all hover:-translate-y-0.5 hover:border-[var(--c-accent)] hover:bg-[rgb(var(--c-accent-rgb)/0.16)]"
+                        className="flex h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--c-border)] bg-[rgb(var(--c-accent-rgb)/0.08)] px-3.5 text-sm font-medium text-[var(--c-accent)] transition-all hover:-translate-y-0.5 hover:border-[var(--c-accent)] hover:bg-[rgb(var(--c-accent-rgb)/0.16)]"
                       >
                         <Icon name={link.icon} size={18} />
+                        {link.label}
                       </a>
                     </li>
                   ))}
@@ -144,6 +148,10 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
               </div>
             )}
 
+            {/* An embed URL gives a real inline map. Without one we used to render
+                nothing at all, even when the school's Google Maps pin was set —
+                so the one piece of location information that IS known stayed
+                invisible. Fall back to a clear, labelled link to that pin. */}
             {bool(data, "showMap", true) && contact.mapEmbedUrl && (
               <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--c-border)]">
                 <iframe
@@ -155,6 +163,36 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
                   allowFullScreen
                 />
               </div>
+            )}
+
+            {bool(data, "showMap", true) && !contact.mapEmbedUrl && contact.mapsLink && (
+              <a
+                href={safeHref(contact.mapsLink)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="card card-hover flex items-center gap-4 p-5"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[rgb(var(--c-accent-rgb)/0.12)] text-[var(--c-accent)]">
+                  <Icon name="pin" size={22} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-[var(--c-text)]">
+                    {locale === "fr"
+                      ? "Voir sur Google Maps"
+                      : locale === "ar"
+                        ? "عرض على خرائط جوجل"
+                        : "View on Google Maps"}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-[var(--c-muted)]">
+                    {locale === "fr"
+                      ? "Itinéraire vers le centre"
+                      : locale === "ar"
+                        ? "الاتجاهات إلى المركز"
+                        : "Directions to the centre"}
+                  </span>
+                </span>
+                <Icon name="arrowUpRight" size={18} className="ms-auto shrink-0 text-[var(--c-accent)]" />
+              </a>
             )}
           </div>
         </Reveal>
