@@ -53,6 +53,17 @@ function flagValue(...names) {
   return null;
 }
 const ENV_FILE = flagValue("--from-file", "--env-file");
+/**
+ * --fix points DATABASE_URL and DIRECT_URL at the database that actually holds
+ * the schema, by COPYING a value that is already in the file.
+ *
+ * It never composes a connection string. Guessing a host, a port or a password
+ * would at best produce a string that fails to connect and at worst one that
+ * connects somewhere unintended, so every value written here is a verbatim copy
+ * of another variable in the same file, chosen because that variable was opened
+ * and the server on the other end reported a complete schema.
+ */
+const FIX = process.argv.includes("--fix");
 
 /**
  * The variables Prisma reads, in the order it reads them.
@@ -67,6 +78,32 @@ const ENV_FILE = flagValue("--from-file", "--env-file");
  */
 const APP_VARIABLE = "DATABASE_URL";
 const MIGRATION_VARIABLE = "DIRECT_URL";
+
+/**
+ * Replace or append `KEY=value` lines, leaving every other line — comments,
+ * ordering, unrelated variables — exactly as it was.
+ *
+ * Values are written, never printed. The file is rewritten with the same
+ * permissions it had; nothing is copied to a backup, because a second file
+ * holding production credentials is a worse outcome than an edit you can undo
+ * with `vercel env pull`.
+ */
+function writeEnvValues(file, updates) {
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  const done = new Set();
+  const out = lines.map((line) => {
+    const t = line.trim();
+    if (!t || t.startsWith("#") || !t.includes("=")) return line;
+    const key = t.slice(0, t.indexOf("=")).trim();
+    if (!(key in updates)) return line;
+    done.add(key);
+    return `${key}="${updates[key]}"`;
+  });
+  for (const [key, value] of Object.entries(updates)) {
+    if (!done.has(key)) out.push(`${key}="${value}"`);
+  }
+  fs.writeFileSync(file, out.join("\n").replace(/\n*$/, "\n"));
+}
 
 /** Parse KEY=value lines. Values are kept in memory only. */
 function readEnvFile(file) {
@@ -260,6 +297,90 @@ if (byOid.size === 0) {
   console.log(`    ${D}have been looking at:${O}`);
   console.log(`      ${D}SELECT oid, datname FROM pg_database WHERE datname = current_database();${O}`);
   console.log(`    The variable whose oid does NOT match that one is the wrong value.`);
+}
+
+// ------------------------------------------------------------------- repair
+/**
+ * Which of the databases these variables reach is the production one?
+ *
+ * Not the one named "production", not the one a variable is called — the one
+ * that holds all the tables the schema declares. That is the only definition
+ * that can be checked rather than assumed, and it is checked by opening the
+ * connection and asking the server.
+ */
+const completeOids = new Map();
+for (const [key, v] of reachable) {
+  if (v.result.missing.length !== 0) continue;
+  const id = `${v.result.database}#${v.result.oid}`;
+  completeOids.set(id, [...(completeOids.get(id) ?? []), key]);
+}
+
+if (FIX) {
+  head("Repair");
+  const appOk = results.get(APP_VARIABLE) && !results.get(APP_VARIABLE).result.error
+    && results.get(APP_VARIABLE).result.missing.length === 0;
+  const migOk = results.get(MIGRATION_VARIABLE) && !results.get(MIGRATION_VARIABLE).result.error
+    && results.get(MIGRATION_VARIABLE).result.missing.length === 0;
+
+  if (appOk && migOk) {
+    ok(`nothing to change — ${APP_VARIABLE} and ${MIGRATION_VARIABLE} already reach a complete database`);
+  } else if (completeOids.size === 0) {
+    bad(`no connection string in this file reaches a database holding all ${expected.length} tables.`);
+    console.log(`    Nothing here can be copied from, so nothing is changed. Either the`);
+    console.log(`    production string is missing from the file (Vercel returns no value`);
+    console.log(`    for a variable marked Sensitive), or the database itself is`);
+    console.log(`    incomplete — in which case run the guarded repair script:`);
+    console.log(`      ${B}prisma/migrations/RUN_IN_SUPABASE_create_missing_tables.sql${O}`);
+  } else if (completeOids.size > 1) {
+    bad(`${completeOids.size} different databases are complete — I will not choose for you:`);
+    for (const [id, keys] of completeOids) console.log(`      ${id}  ←  ${keys.join(", ")}`);
+    console.log(`    Run this in the SQL editor of the project you intend to use, and`);
+    console.log(`    tell me which oid it prints:`);
+    console.log(`      ${D}SELECT oid, datname FROM pg_database WHERE datname = current_database();${O}`);
+  } else {
+    const [targetId, sourceKeys] = [...completeOids.entries()][0];
+    // Supabase and the Vercel integration name the two endpoints of one
+    // database. Prisma wants the pooled one for queries and the direct one for
+    // schema changes, so prefer accordingly rather than copying one string into
+    // both and hoping. Anything already correct is left alone.
+    const isPooled = (k) => results.get(k).d.port === "6543" || /pgbouncer=true/.test(values.get(k) ?? "");
+    const pick = (order) => order.find((k) => sourceKeys.includes(k)) ?? sourceKeys[0];
+    const pooledSource = pick(sourceKeys.filter(isPooled).length
+      ? ["POSTGRES_PRISMA_URL", "POSTGRES_URL", ...sourceKeys.filter(isPooled)]
+      : ["POSTGRES_PRISMA_URL", "POSTGRES_URL", "POSTGRES_URL_NON_POOLING", ...sourceKeys]);
+    const directSource = pick(["POSTGRES_URL_NON_POOLING",
+      ...sourceKeys.filter((k) => !isPooled(k)), ...sourceKeys]);
+
+    const updates = {};
+    if (!appOk) updates[APP_VARIABLE] = values.get(pooledSource);
+    if (!migOk) updates[MIGRATION_VARIABLE] = values.get(directSource);
+
+    console.log(`  the complete database is ${B}${targetId}${O}, reached by: ${sourceKeys.join(", ")}`);
+    for (const key of Object.keys(updates)) {
+      const from = key === APP_VARIABLE ? pooledSource : directSource;
+      console.log(`  ${G}→${O} ${key} ← copied verbatim from ${B}${from}${O} ${D}(value not shown)${O}`);
+    }
+    writeEnvValues(resolved, updates);
+    ok(`${ENV_FILE} updated; every other line left untouched`);
+
+    // Prove it rather than assume it: reopen the file and re-probe.
+    const after = readEnvFile(resolved);
+    for (const key of [APP_VARIABLE, MIGRATION_VARIABLE]) {
+      const d = describe(after.get(key) ?? "");
+      if (!d) { bad(`${key} is still not a connection string`); continue; }
+      const r = await probe(after.get(key), d.schema, expected);
+      if (r.error) bad(`${key} still does not connect — ${r.error}`);
+      else if (r.missing.length) bad(`${key} now reaches "${r.database}" oid ${r.oid} — still ${r.missing.length} missing`);
+      else ok(`${key} now reaches "${r.database}" oid ${r.oid} — complete`);
+      results.set(key, { d, result: r });
+    }
+
+    warn(`This changed a file on THIS machine only.`);
+    console.log(`    The deployed site reads Vercel's own variables, not this file. Set`);
+    console.log(`    ${APP_VARIABLE} and ${MIGRATION_VARIABLE} for Production in`);
+    console.log(`    Vercel → Settings → Environment Variables to the values that`);
+    console.log(`    ${sourceKeys.join(" / ")} already hold, then redeploy.`);
+  }
 }
 
 // ---------------------------------------------------------------- verdict

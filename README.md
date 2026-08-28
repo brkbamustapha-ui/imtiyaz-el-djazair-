@@ -50,7 +50,7 @@ immediately; do that, then blank `ADMIN_PASSWORD` in `.env`.
 | `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`) — what you run against production |
 | `npm run db:migrate` | Create a new migration after changing `schema.prisma` (development) |
 | `npm run db:doctor` | Report whether the database the app reads has the tables it expects; `-- --fix` repairs it, `-- --sql` prints the same check as SQL to paste into a provider's editor |
-| `npm run db:verify` | Open **every** connection string in an env file and report which database each one actually reaches. Read only |
+| `npm run db:verify` | Open **every** connection string in an env file and report which database each one actually reaches; `-- --fix` repoints `DATABASE_URL`/`DIRECT_URL` at the complete one. Never writes to a database |
 | `npm run db:baseline` | One-off: mark the initial migration as already applied on a database built with `db push` |
 | `npm run db:seed` | Re-run the seed (safe to repeat — it never overwrites) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -538,6 +538,36 @@ names those two and nothing else. The `POSTGRES_*` variables are written by the
 Vercel/Supabase integration and are inspected purely as evidence: if they point
 somewhere `DATABASE_URL` does not, the account is pointed at two databases and
 one of the two is the wrong one.
+
+When the variables turn out to address two databases, `--fix` repoints the two
+Prisma reads:
+
+```bash
+npm run db:verify -- --from-file .env.production --fix
+```
+
+It never composes a connection string. Every value it writes is a **verbatim
+copy of another variable in the same file**, chosen because that variable was
+opened and the server on the other end reported all 22 tables. Guessing a host
+or a password would at best fail to connect and at worst connect somewhere
+unintended.
+
+Which source it copies from follows what the names mean: `DATABASE_URL` takes
+the pooled endpoint (`POSTGRES_PRISMA_URL`, port 6543), `DIRECT_URL` takes the
+direct one (`POSTGRES_URL_NON_POOLING`, port 5432) — the split Prisma needs,
+queries through the pooler and schema changes around it.
+
+It refuses rather than guesses in the three cases where there is no defensible
+answer: nothing in the file reaches a complete database (it points at the
+guarded repair script instead); two different databases are complete (it prints
+both oids and asks which project you mean); or the variables are already
+correct, in which case the file is left byte-for-byte identical.
+
+The edit is local. **The deployed site reads Vercel's variables, not this
+file** — the run says so and names the values to copy into Vercel → Settings →
+Environment Variables for Production. Nothing here touches Vercel, and nothing
+here writes to any database: `SELECT` only, no `CREATE`, `ALTER`, `DROP`,
+`TRUNCATE`, `DELETE` or `UPDATE`.
 
 It also solves a smaller problem. `db:doctor` is an old script name, so a
 checkout that never received an update runs old code and prints an old answer
