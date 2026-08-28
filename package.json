@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:deploy": "prisma migrate deploy",
+    "db:doctor": "node scripts/db-doctor.mjs",
     "db:migrate": "prisma migrate dev",
     "db:baseline": "prisma migrate resolve --applied 20260827000000_init",
     "db:push": "prisma db push",

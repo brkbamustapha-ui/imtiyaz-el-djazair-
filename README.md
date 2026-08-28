@@ -49,6 +49,7 @@ immediately; do that, then blank `ADMIN_PASSWORD` in `.env`.
 | `npm run setup` | Generate the client, apply migrations, seed |
 | `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`) — what you run against production |
 | `npm run db:migrate` | Create a new migration after changing `schema.prisma` (development) |
+| `npm run db:doctor` | Report whether the database the app reads has the tables it expects; `-- --fix` repairs it |
 | `npm run db:baseline` | One-off: mark the initial migration as already applied on a database built with `db push` |
 | `npm run db:seed` | Re-run the seed (safe to repeat — it never overwrites) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -330,6 +331,41 @@ now, and you will be asked to change the password at first login.
 **4. Deploy.** Vercel runs `npm run build`, which is
 `prisma generate && next build`. Nothing else is needed: no build-time database
 access, no migration step in the pipeline.
+
+### When the site is deployed and still says a table does not exist
+
+Run this first — it answers the question rather than guessing at it:
+
+```bash
+npm run db:doctor
+```
+
+It prints, with **passwords masked and never logged**, what `DATABASE_URL` and
+`DIRECT_URL` each resolve to, whether they are the same database, and — checked
+through *each* of them — whether `public.StoredFile` is there and what the
+migration history says. Then a verdict.
+
+That distinction is the whole point. `prisma migrate deploy` runs through
+`DIRECT_URL`; the deployed site queries through `DATABASE_URL`. If those two
+address different databases, the migration reports complete success and the
+site keeps failing. It looks like a migration problem and is really an address
+problem, and no amount of re-running migrations fixes it.
+
+The four things it separates:
+
+| What the doctor says | What is actually wrong |
+| --- | --- |
+| `StoredFile does not exist … in any schema` | The migration has not been applied here. Run `npm run db:doctor -- --fix`. |
+| `NO — they address different databases` | `DATABASE_URL` and `DIRECT_URL` are two different databases. Fix the values; on Supabase they must be the pooled (port 6543) and direct (port 5432) strings of **one** project. |
+| `StoredFile is NOT in "public" — it is in: X` | Right database, wrong schema. Align the `?schema=` parameter on both URLs. |
+| `public.StoredFile EXISTS` | The database is fine. If Vercel still shows the error, check the log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. |
+
+`npm run db:doctor -- --fix` baselines only when the database already has tables
+but no history, applies the pending migrations, then re-checks **through
+`DATABASE_URL`** — the one that matters. It never drops, resets or truncates.
+
+Whatever you change, the same two values must also be set in Vercel → Settings →
+Environment Variables for Production, and the site redeployed afterwards.
 
 ### Repairing a database created with `db push`
 
