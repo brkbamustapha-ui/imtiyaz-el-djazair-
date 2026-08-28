@@ -160,21 +160,49 @@ async function inspect(url, schema) {
       );
       fingerprint = `oid:${r.oid}/${r.started}/${current_database}`;
     }
+    // pg_class, NOT information_schema.tables.
+    //
+    // information_schema is privilege-filtered by the SQL standard: it lists
+    // only the tables the connecting role holds some privilege on. A role with
+    // rights on four tables sees four, and a complete database reads as
+    // eighteen tables missing. Measured on one database at one moment:
+    // information_schema 4, pg_class 22, to_regclass 22.
+    //
+    // "Does this table exist?" must not depend on who is asking. pg_class
+    // answers that; information_schema answers a different question.
     const tables = await db.$queryRawUnsafe(
-      "SELECT table_name::text AS t FROM information_schema.tables WHERE table_schema = $1 ORDER BY 1", schema,
+      `SELECT c.relname::text AS t
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = $1 AND c.relkind IN ('r', 'p')
+        ORDER BY 1`, schema,
     );
     // Look for the table in EVERY schema, not just the expected one: "it exists
     // but somewhere else" is a different problem from "it was never created".
     const anywhere = await db.$queryRawUnsafe(
-      "SELECT table_schema::text AS s FROM information_schema.tables WHERE table_name = 'StoredFile'",
+      `SELECT n.nspname::text AS s
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'StoredFile' AND c.relkind IN ('r', 'p')`,
     );
     let migrations = null;
+    let migrationsUnreadable = false;
     try {
       migrations = await db.$queryRawUnsafe(
         `SELECT migration_name::text AS name, (finished_at IS NOT NULL) AS done, (rolled_back_at IS NOT NULL) AS rolled_back
          FROM "${schema}"._prisma_migrations ORDER BY started_at`,
       );
-    } catch { /* table absent: this database has no migration history */ }
+    } catch (error) {
+      // "absent" and "there but not readable by this role" are different facts.
+      // Reporting the second as the first is how a privilege problem gets
+      // mistaken for a missing migration.
+      const exists = await db
+        .$queryRawUnsafe(
+          `SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1 AND c.relname = '_prisma_migrations'`, schema,
+        )
+        .catch(() => []);
+      migrationsUnreadable = Array.isArray(exists) && exists.length > 0;
+      void error;
+    }
     return {
       fingerprint,
       currentDatabase: current_database,
@@ -182,6 +210,7 @@ async function inspect(url, schema) {
       tables: tables.map((r) => r.t),
       storedFileSchemas: anywhere.map((r) => r.s),
       migrations,
+      migrationsUnreadable,
     };
   } catch (error) {
     // Prisma messages start with a blank line, so taking split("\n")[0] yields ""
@@ -229,7 +258,11 @@ function report(label, state, schema) {
     warn(`the app looks in "${schema}", so it cannot see it`);
   } else bad(`StoredFile does not exist in this database, in any schema`);
 
-  if (!state.migrations) warn(`_prisma_migrations is absent — this database has no migration history`);
+  if (!state.migrations && state.migrationsUnreadable) {
+    warn(`_prisma_migrations exists but this role cannot read it — history unknown`);
+  } else if (!state.migrations) {
+    warn(`_prisma_migrations is absent — this database has no migration history`);
+  }
   else {
     say(`    migration history (${state.migrations.length}):`);
     for (const m of state.migrations) {
@@ -403,6 +436,7 @@ function printSummary(state, reachable) {
 
   let l4;
   if (!reachable) l4 = "indéterminé — connexion impossible";
+  else if (!state.migrations && state.migrationsUnreadable) l4 = "illisible par ce rôle (table présente)";
   else if (!state.migrations) l4 = "aucun historique (_prisma_migrations absente)";
   else if (state.migrations.length === 0) l4 = "historique présent mais vide";
   else {
