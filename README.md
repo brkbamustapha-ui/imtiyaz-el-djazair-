@@ -50,6 +50,7 @@ immediately; do that, then blank `ADMIN_PASSWORD` in `.env`.
 | `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`) — what you run against production |
 | `npm run db:migrate` | Create a new migration after changing `schema.prisma` (development) |
 | `npm run db:doctor` | Report whether the database the app reads has the tables it expects; `-- --fix` repairs it, `-- --sql` prints the same check as SQL to paste into a provider's editor |
+| `npm run db:verify` | Open **every** connection string in an env file and report which database each one actually reaches. Read only |
 | `npm run db:baseline` | One-off: mark the initial migration as already applied on a database built with `db push` |
 | `npm run db:seed` | Re-run the seed (safe to repeat — it never overwrites) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -517,6 +518,36 @@ The five things it separates:
 | `NO — these are genuinely two different databases` | The two URLs reach different databases. Fix the values; on Supabase they must be the pooled (6543) and direct (5432) strings of **one** project. Sameness is decided by asking each server for its identity, not by comparing the two strings — Supabase gives one database two hostnames, and comparing text would flag a correct setup. |
 | `StoredFile is NOT in "public" — it is in: X` | Right database, wrong schema. Align the `?schema=` parameter on both URLs. |
 | `public.StoredFile EXISTS` | The database is fine. Check the failing log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. Then check the `[db] connecting to …` line from the same deployment: if its host differs from the one you checked, the runtime is on a different database, most often because the deployment is a Preview build reading Preview variables rather than Production ones. |
+
+### Which variable reaches which database
+
+```bash
+npm run db:verify -- --from-file .env.production
+```
+
+`db:doctor` inspects the one connection string the app uses. `db:verify`
+inspects them all — `DATABASE_URL`, `DIRECT_URL`, and every `POSTGRES_*` an
+integration writes — connects to each, and asks each server for its database
+name and oid. Variables that turn out to address two different databases are the
+usual reason a schema looks complete in the provider's SQL editor and incomplete
+from a laptop, and reading one connection string more carefully can never reveal
+it.
+
+Only `DATABASE_URL` and `DIRECT_URL` are read by this project — `schema.prisma`
+names those two and nothing else. The `POSTGRES_*` variables are written by the
+Vercel/Supabase integration and are inspected purely as evidence: if they point
+somewhere `DATABASE_URL` does not, the account is pointed at two databases and
+one of the two is the wrong one.
+
+It also solves a smaller problem. `db:doctor` is an old script name, so a
+checkout that never received an update runs old code and prints an old answer
+with nothing to say so. `db:verify` is a new name: in a stale checkout npm
+answers `Missing script: "db:verify"` and stops, which is a far better outcome
+than a confident wrong number. The run prints its own path and checksum for the
+same reason.
+
+Read only — `SELECT` and nothing else. Passwords are never printed, and any that
+appeared in a driver's error text would be scrubbed before the line is shown.
 
 ### When the doctor and the SQL editor disagree
 
