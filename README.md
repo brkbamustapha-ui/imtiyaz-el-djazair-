@@ -370,6 +370,41 @@ the table exists; `DIRECT_URL` is only needed for `--fix`.
 password, a secret or a connection string — only host, port, database name,
 schema and user.
 
+### `migrate deploy` alone will not work on this database — P3005
+
+A database created with `db push` has tables but no migration history, and
+`prisma migrate deploy` refuses to touch it:
+
+```
+Error: P3005
+The database schema is not empty.
+```
+
+That is Prisma protecting you, not a fault. It will not assume 21 tables it has
+no record of are the ones its first migration describes. Tell it once, then
+deploy:
+
+```bash
+npm run db:baseline    # records 20260827000000_init as applied — runs no SQL
+npm run db:deploy      # applies only 20260828000000_add_stored_file
+```
+
+Both variables must be set and non-empty for either command, even though
+migrations travel over `DIRECT_URL` alone:
+
+| What you set | What happens |
+| --- | --- |
+| `DATABASE_URL` empty | `P1012 — you must provide a nonempty URL`, nothing runs |
+| `DATABASE_URL` unset | falls back to `.env`, so it may silently target the wrong database |
+| both set to the direct string | correct — it is the same database, and `deploy` uses `directUrl` |
+
+When `vercel env pull` cannot return `DATABASE_URL` because the variable is
+marked Sensitive, put the **direct Supabase string in both**. It is one database
+reached two ways, so nothing is misdirected.
+
+`npm run db:doctor -- --fix` does the same two steps in the right order, and
+baselines only when the database actually needs it.
+
 ### When the connection string cannot be read back
 
 A variable marked **Sensitive** in Vercel is write-only: `vercel env pull`
