@@ -243,9 +243,9 @@ function report(label, state, schema) {
 // ------------------------------------------------------------------- run
 say(`${B}Database doctor${O} ${D}— credentials are never printed${O}`);
 
-const appUrl = process.env.DATABASE_URL;
+let appUrl = process.env.DATABASE_URL;
 const migUrl = process.env.DIRECT_URL;
-const app = describe(appUrl);
+let app = describe(appUrl);
 const mig = describe(migUrl);
 
 head("Connection strings");
@@ -259,8 +259,24 @@ if (mig) {
   say(`    ${D}enough to answer whether the table exists. --fix would need it.${O}`);
 }
 
+// A file written by `vercel env pull` often has no DATABASE_URL at all: a
+// variable marked Sensitive is write-only and comes back without its value.
+// DIRECT_URL reaches the same database, so inspect through that rather than
+// refusing — the question is what the database contains, not which door was used.
+let usingDirectAsFallback = false;
+if ((!app || app.invalid) && mig && !mig.invalid) {
+  usingDirectAsFallback = true;
+  appUrl = migUrl;
+  app = mig;
+  warn("DATABASE_URL is not in this file — inspecting through DIRECT_URL instead");
+  warn("(Vercel returns no value for a variable marked Sensitive; same database)");
+}
+
 if (!app || app.invalid) {
-  say(`\n${R}${B}DATABASE_URL is not set, or is not a valid connection string.${O}`);
+  // Always printed, even under --summary: a run that dies silently with exit 1
+  // tells the reader nothing at all.
+  console.log(`\n${R}${B}Neither DATABASE_URL nor DIRECT_URL is set to a valid connection string.${O}`);
+  console.log(`Put at least one of them in the file you passed to --from-file.`);
   process.exit(1);
 }
 if (mig?.invalid) {
@@ -397,7 +413,7 @@ function printSummary(state, reachable) {
       : `${done.length}/${state.migrations.length} appliquées, en attente : ${pending.map((m) => m.name).join(", ")}`;
   }
 
-  console.log(`DATABASE_URL Production : ${l1}`);
+  console.log(`DATABASE_URL Production : ${usingDirectAsFallback ? "absente du fichier (contrôle fait via DIRECT_URL)" : l1}`);
   console.log(`Base Production : ${l2}`);
   console.log(`public.StoredFile : ${l3}`);
   console.log(`Migrations : ${l4}`);
