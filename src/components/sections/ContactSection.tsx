@@ -7,6 +7,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Icon } from "@/components/ui/Icon";
 import { t } from "@/lib/i18n";
 import { safeHref } from "@/lib/utils";
+import { contactPhones, telHref } from "@/lib/settings-schema";
 import { DEFAULT_CONTACT_FIELDS, type FormFieldDef } from "@/lib/forms";
 import { bool, ls, str, SectionHeading, SectionShell, type SectionProps } from "./helpers";
 
@@ -21,20 +22,34 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
     ? parseJson<FormFieldDef[]>(form.fieldsJson, DEFAULT_CONTACT_FIELDS)
     : DEFAULT_CONTACT_FIELDS;
 
+  const phones = contactPhones(contact);
+  const addressValue = [contact.addressLine1, contact.addressLine2, contact.city, contact.country]
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+
+  type Detail = {
+    icon: string;
+    label: string;
+    value?: string;
+    href?: string;
+    /** Several clickable values under one heading — the school has five lines. */
+    items?: { text: string; href: string }[];
+  };
+
   const details = [
-    contact.addressLine1 && {
+    // Keyed off the assembled value, not addressLine1: the street line is not
+    // known, but "Alger, Algérie" plus the map pin still locates the school.
+    addressValue && {
       icon: "pin",
       label: locale === "fr" ? "Adresse" : locale === "ar" ? "العنوان" : "Address",
-      value: [contact.addressLine1, contact.addressLine2, contact.city, contact.country]
-        .filter(Boolean)
-        .join(", "),
+      value: addressValue,
       href: contact.mapsLink || undefined,
     },
-    contact.phonePrimary && {
+    phones.length > 0 && {
       icon: "phone",
       label: locale === "fr" ? "Téléphone" : locale === "ar" ? "الهاتف" : "Phone",
-      value: [contact.phonePrimary, contact.phoneSecondary].filter(Boolean).join(" · "),
-      href: `tel:${contact.phonePrimary.replace(/\s/g, "")}`,
+      items: phones.map((number) => ({ text: number, href: telHref(number) })),
     },
     contact.email && {
       icon: "mail",
@@ -42,7 +57,7 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
       value: contact.email,
       href: `mailto:${contact.email}`,
     },
-  ].filter(Boolean) as { icon: string; label: string; value: string; href?: string }[];
+  ].filter(Boolean) as Detail[];
 
   // The school's accounts and its map pin, as icons. Each entry only appears
   // when the matching setting holds a link, so nothing ever points nowhere.
@@ -83,7 +98,21 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
                       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--c-muted)]">
                         {detail.label}
                       </p>
-                      {detail.href ? (
+                      {detail.items ? (
+                        <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                          {detail.items.map((item) => (
+                            <li key={item.href}>
+                              <a
+                                href={item.href}
+                                dir="ltr"
+                                className="text-[0.94rem] text-[var(--c-text)] transition-colors hover:text-[var(--c-accent)]"
+                              >
+                                {item.text}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : detail.href ? (
                         <a
                           href={detail.href}
                           target={detail.href.startsWith("http") ? "_blank" : undefined}

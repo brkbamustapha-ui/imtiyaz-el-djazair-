@@ -6,6 +6,7 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { Icon } from "@/components/ui/Icon";
 import { safeHref } from "@/lib/utils";
+import { contactPhones, telHref } from "@/lib/settings-schema";
 import { SiteLogo } from "./Logo";
 import { getBrandLogos } from "@/lib/brand";
 
@@ -131,23 +132,38 @@ export async function Footer() {
             {locale === "fr" ? "Contact" : locale === "ar" ? "اتصل بنا" : "Contact"}
           </h2>
           <ul className="mt-4 space-y-3 text-sm text-[var(--c-muted)]">
-            {contact.addressLine1 && (
+            {/* Gated on the assembled line, not on addressLine1 alone: the
+                street line is not known, but the city and the map pin are. */}
+            {[contact.addressLine1, contact.addressLine2, contact.city, contact.country].some(
+              (part) => (part ?? "").trim(),
+            ) && (
               <li className="flex gap-2.5">
                 <Icon name="pin" size={16} className="mt-0.5 shrink-0 text-[var(--c-accent)]" />
                 <span>
-                  {contact.addressLine1}
-                  {contact.addressLine2 ? `, ${contact.addressLine2}` : ""}
-                  <br />
+                  {[contact.addressLine1, contact.addressLine2]
+                    .map((part) => (part ?? "").trim())
+                    .filter(Boolean)
+                    .join(", ")}
+                  {[contact.addressLine1, contact.addressLine2].some((p) => (p ?? "").trim()) && <br />}
                   {[contact.city, contact.country].filter(Boolean).join(", ")}
                 </span>
               </li>
             )}
-            {contact.phonePrimary && (
+            {contactPhones(contact).length > 0 && (
               <li className="flex gap-2.5">
                 <Icon name="phone" size={16} className="mt-0.5 shrink-0 text-[var(--c-accent)]" />
-                <a href={`tel:${contact.phonePrimary.replace(/\s/g, "")}`} className="hover:text-[var(--c-text)]">
-                  {contact.phonePrimary}
-                </a>
+                <span className="flex flex-col gap-0.5">
+                  {contactPhones(contact).map((number) => (
+                    <a
+                      key={number}
+                      href={telHref(number)}
+                      dir="ltr"
+                      className="hover:text-[var(--c-text)]"
+                    >
+                      {number}
+                    </a>
+                  ))}
+                </span>
               </li>
             )}
             {contact.email && (

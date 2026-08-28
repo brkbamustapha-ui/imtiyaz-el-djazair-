@@ -27,6 +27,12 @@ export type ContactSettings = {
   addressLine2: string;
   city: string;
   country: string;
+  /**
+   * Every number the school answers on. The two fields below are the original
+   * shape and are kept so older saved settings keep working; when `phones` has
+   * rows it is what the site shows.
+   */
+  phones: { number: string; label: LocalizedText }[];
   phonePrimary: string;
   phoneSecondary: string;
   email: string;
@@ -35,6 +41,25 @@ export type ContactSettings = {
   mapsLink: string;
   openingHours: { day: LocalizedText; hours: string }[];
 };
+
+/**
+ * Every phone number to show, in order.
+ *
+ * `phones` is the current shape; the two single fields are what older saved
+ * settings hold. Reading through one function means the site, the footer and
+ * anything added later cannot disagree about which numbers exist.
+ */
+export function contactPhones(contact: ContactSettings): string[] {
+  const rows = Array.isArray(contact.phones) ? contact.phones : [];
+  const listed = rows.map((row) => (row?.number ?? "").trim()).filter(Boolean);
+  if (listed.length > 0) return listed;
+  return [contact.phonePrimary, contact.phoneSecondary].map((n) => (n ?? "").trim()).filter(Boolean);
+}
+
+/** `tel:` needs the bare digits, with no spaces or separators. */
+export function telHref(number: string): string {
+  return `tel:${number.replace(/[^\d+]/g, "")}`;
+}
 
 export type SocialSettings = {
   instagram: string;
@@ -220,15 +245,25 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     demoContentNotice: true,
   },
   contact: {
-    // TODO(client): replace with the school's real contact details.
-    addressLine1: "Add your street address",
+    // The street address has not been supplied; the school's Google Maps pin
+    // below is what locates it, so no invented street line goes on the page.
+    addressLine1: "",
     addressLine2: "",
-    city: "Algiers",
-    country: "Algeria",
-    phonePrimary: "+213 000 00 00 00",
+    city: "Alger",
+    country: "Algérie",
+    phones: [
+      { number: "0561 67 08 05", label: { en: "", fr: "", ar: "" } },
+      { number: "0550 73 31 34", label: { en: "", fr: "", ar: "" } },
+      { number: "0550 73 31 21", label: { en: "", fr: "", ar: "" } },
+      { number: "0550 73 31 27", label: { en: "", fr: "", ar: "" } },
+      { number: "0554 10 07 26", label: { en: "", fr: "", ar: "" } },
+    ],
+    phonePrimary: "",
     phoneSecondary: "",
-    email: "contact@imtiyazeldjazair.com",
-    admissionsEmail: "admissions@imtiyazeldjazair.com",
+    email: "contact@imtiyazeldjazair.dz",
+    // No second address was supplied, and inventing one would put a mailbox
+    // nobody reads on a real school's contact page.
+    admissionsEmail: "",
     mapEmbedUrl: "",
     // The school's own Google Maps pin, as published on its Instagram bio.
     mapsLink: "https://maps.app.goo.gl/6JRUTa2CWgjvEnVx9",
