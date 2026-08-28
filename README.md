@@ -370,6 +370,30 @@ the table exists; `DIRECT_URL` is only needed for `--fix`.
 password, a secret or a connection string — only host, port, database name,
 schema and user.
 
+### When the connection string cannot be read back
+
+A variable marked **Sensitive** in Vercel is write-only: `vercel env pull`
+returns the file without its value, so there is no way to point
+`prisma migrate deploy` at production from a laptop. That is the platform
+working as intended, not a mistake.
+
+Two ways round it, neither of which needs the string to leave where it lives:
+
+**Run the SQL where the database is.** Supabase dashboard → SQL Editor → paste
+`prisma/migrations/RUN_IN_SUPABASE_SQL_EDITOR.sql` → Run. It creates the
+missing table and records both migrations in Prisma's bookkeeping table, so
+`prisma migrate deploy` agrees with reality afterwards and applies nothing
+twice. It contains no DROP, TRUNCATE, DELETE, ALTER or UPDATE — only
+`CREATE … IF NOT EXISTS` and inserts guarded by `WHERE NOT EXISTS`. Running it
+again does nothing.
+
+**Or take the string from its source.** Supabase dashboard → Project Settings →
+Database → Connection string. That is where the value originates; Vercel only
+holds a copy. Put it in a local `.env` and run `npm run db:deploy`.
+
+After either, `npx prisma migrate status` should say *Database schema is up to
+date*.
+
 ### Which database is the deployed runtime actually using?
 
 Only the running process knows. On startup it logs one line, visible in the
