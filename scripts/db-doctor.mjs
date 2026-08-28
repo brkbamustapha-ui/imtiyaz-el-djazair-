@@ -32,6 +32,16 @@ const head = (m) => say(`\n${B}${m}${O}`);
 const FIX = process.argv.includes("--fix");
 const BASELINE = "20260827000000_init";
 
+/**
+ * Printed by every run, including --summary.
+ *
+ * Two people comparing two outputs need to know they ran the same code. Without
+ * this, an old copy of the script and a current one produce contradictory
+ * numbers that look like a database problem and are really a stale file — which
+ * is exactly how "the SQL Editor says 22, the doctor says 4" survives a fix.
+ */
+const VERSION = "v3 — 2026-08-28, detection by to_regclass";
+
 // --from-file reads the file `vercel env pull` writes, so production can be
 // checked without those values ever being typed out or stored in .env.
 //
@@ -50,7 +60,36 @@ const BASELINE = "20260827000000_init";
 function expectedTables() {
   try {
     const schema = fs.readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
-    return [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((m) => m[1]);
+    const models = [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map((m) => m[1]);
+    // A model renamed with @@map is stored under the mapped name, so the model
+    // name would be the wrong thing to look for. There is none in this schema;
+    // say so out loud rather than reporting phantom missing tables if one is
+    // ever added.
+    if (/^\s*@@map\s*\(/m.test(schema)) {
+      warn("schema.prisma uses @@map — table names may differ from model names");
+    }
+    return models;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The tables a migration's SQL creates, read from the migration itself.
+ *
+ * Used to decide whether baselining is honest. `migrate resolve --applied`
+ * records a migration WITHOUT running it, so it is only ever correct when the
+ * database already contains everything that migration would have created.
+ * Recording it over a database that has some of those tables is how a schema
+ * ends up permanently missing the rest, with Prisma convinced it is up to date
+ * — that is what produced "public.SiteSetting does not exist" in production.
+ */
+function tablesCreatedBy(migration) {
+  try {
+    const sql = fs.readFileSync(
+      path.join(process.cwd(), "prisma", "migrations", migration, "migration.sql"), "utf8",
+    );
+    return [...sql.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"([^"]+)"/gi)].map((m) => m[1]);
   } catch {
     return [];
   }
@@ -70,6 +109,38 @@ const SUMMARY = process.argv.includes("--summary");
 // --rm-env-file deletes it afterwards: production credentials should not sit on
 // a laptop any longer than the check that needed them.
 const RM_ENV_FILE = process.argv.includes("--rm-env-file") || process.argv.includes("--rm-file");
+
+/**
+ * --sql prints the read-only query this script runs, generated from the same
+ * model list, ready to paste into the provider's SQL editor.
+ *
+ * It exists because "the SQL Editor says 22, this says 4" is only answerable by
+ * asking the server the SAME question from both places. It needs no connection
+ * and no credentials, so it works even when the connection string cannot be
+ * read back.
+ */
+if (process.argv.includes("--sql")) {
+  const names = expectedTables();
+  if (!names.length) {
+    console.log("Could not read prisma/schema.prisma — run this from the project root.");
+    process.exit(1);
+  }
+  const values = names.map((n) => `  ('${n}')`).join(",\n");
+  console.log(`-- Read only. Paste into Supabase -> SQL Editor -> New query -> Run.
+-- Generated from prisma/schema.prisma (${names.length} models) by db-doctor ${VERSION}.
+WITH expected(name) AS (VALUES
+${values}
+)
+SELECT
+  count(*) FILTER (WHERE to_regclass('public.' || quote_ident(name)) IS NOT NULL) AS present,
+  count(*)                                                                       AS expected,
+  coalesce(string_agg(name, ', ') FILTER (
+    WHERE to_regclass('public.' || quote_ident(name)) IS NULL), '(none)')         AS missing,
+  current_database()                                                             AS database,
+  (SELECT oid FROM pg_database WHERE datname = current_database())               AS database_oid
+FROM expected;`);
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------- env loading
 // Prisma loads .env itself, but this script needs the raw strings to compare
@@ -150,39 +221,84 @@ async function inspect(url, schema) {
     // is exact; where it is not readable, database oid + postmaster start time
     // is a good enough fingerprint and needs no special privilege.
     let fingerprint;
+    // The database's own oid, printed in the report. It is not a secret and it
+    // is the one value that settles "is the SQL Editor looking at the database
+    // this script just read?" — the operator runs
+    //   SELECT oid, current_database() FROM pg_database WHERE datname = current_database();
+    // there and compares. Two different numbers end the argument in one line.
+    const [{ oid: databaseOid }] = await db.$queryRawUnsafe(
+      `SELECT (SELECT oid FROM pg_database WHERE datname = current_database())::text AS oid`,
+    );
     try {
       const [r] = await db.$queryRawUnsafe("SELECT system_identifier::text AS id FROM pg_control_system()");
       fingerprint = `sys:${r.id}/${current_database}`;
     } catch {
-      const [r] = await db.$queryRawUnsafe(
-        `SELECT (SELECT oid FROM pg_database WHERE datname = current_database())::text AS oid,
-                pg_postmaster_start_time()::text AS started`,
-      );
-      fingerprint = `oid:${r.oid}/${r.started}/${current_database}`;
+      const [r] = await db.$queryRawUnsafe(`SELECT pg_postmaster_start_time()::text AS started`);
+      fingerprint = `oid:${databaseOid}/${r.started}/${current_database}`;
     }
-    // pg_class, NOT information_schema.tables.
-    //
-    // information_schema is privilege-filtered by the SQL standard: it lists
-    // only the tables the connecting role holds some privilege on. A role with
-    // rights on four tables sees four, and a complete database reads as
-    // eighteen tables missing. Measured on one database at one moment:
-    // information_schema 4, pg_class 22, to_regclass 22.
-    //
-    // "Does this table exist?" must not depend on who is asking. pg_class
-    // answers that; information_schema answers a different question.
+    // Every table in the schema, for the count.
     const tables = await db.$queryRawUnsafe(
       `SELECT c.relname::text AS t
          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = $1 AND c.relkind IN ('r', 'p')
         ORDER BY 1`, schema,
     );
-    // Look for the table in EVERY schema, not just the expected one: "it exists
-    // but somewhere else" is a different problem from "it was never created".
-    const anywhere = await db.$queryRawUnsafe(
-      `SELECT n.nspname::text AS s
-         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relname = 'StoredFile' AND c.relkind IN ('r', 'p')`,
-    );
+
+    // ------------------------------------------------------------------
+    // One query, three independent answers to "is this table here?", plus
+    // where else a table of that name lives.
+    //
+    // They are asked together on purpose. A single number is a claim; three
+    // numbers are evidence, and the SHAPE of a disagreement names its cause:
+    //
+    //   info < pg_class = regclass   the tables exist and this role holds no
+    //                                privilege on them. information_schema is
+    //                                privilege-filtered by the SQL standard —
+    //                                it lists what you may touch, not what is
+    //                                there. This is a grants finding, not a
+    //                                missing-table finding.
+    //   all three low, `elsewhere`   the table is real but under a different
+    //                                case ("user" vs "User") or in a different
+    //                                schema. Both are addressable, not absent.
+    //   all three low, nothing else  it was never created in this database.
+    //
+    // Measured on four purpose-built databases (all-correct; 18 owned by
+    // another role; 18 folded to lower case; 18 in another schema), read as the
+    // low-privilege role: to_regclass and pg_class agreed in every one of them,
+    // 22/22/22 and 4/4/4 and — in the privilege case — 4 / 22 / 22.
+    //
+    // to_regclass leads because it is the method of
+    // prisma/migrations/CHECK_IN_SUPABASE_all_tables.sql. Two tools that ask
+    // the server the same question cannot come back with two different answers,
+    // and that is the whole point: this script and the Supabase SQL Editor now
+    // agree by construction, or the run says why not.
+    // ------------------------------------------------------------------
+    const expected = expectedTables();
+    const checks = expected.length
+      ? await db.$queryRawUnsafe(
+          `WITH expected(name) AS (SELECT unnest($2::text[]))
+           SELECT e.name::text AS name,
+                  (to_regclass(quote_ident($1) || '.' || quote_ident(e.name)) IS NOT NULL)
+                    AS by_regclass,
+                  EXISTS (SELECT 1 FROM pg_class c
+                            JOIN pg_namespace n ON n.oid = c.relnamespace
+                           WHERE n.nspname = $1 AND c.relname = e.name
+                             AND c.relkind IN ('r', 'p')) AS by_pgclass,
+                  EXISTS (SELECT 1 FROM information_schema.tables t
+                           WHERE t.table_schema = $1 AND t.table_name = e.name)
+                    AS by_infoschema,
+                  COALESCE((SELECT string_agg(DISTINCT n.nspname || '.' || c.relname, ', ')
+                              FROM pg_class c
+                              JOIN pg_namespace n ON n.oid = c.relnamespace
+                             WHERE lower(c.relname) = lower(e.name)
+                               AND c.relkind IN ('r', 'p')
+                               AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+                               AND n.nspname NOT LIKE 'pg\\_%'
+                               AND NOT (n.nspname = $1 AND c.relname = e.name)), '')
+                    AS elsewhere
+           FROM expected e ORDER BY e.name`, schema, expected,
+        )
+      : [];
     let migrations = null;
     let migrationsUnreadable = false;
     try {
@@ -203,12 +319,24 @@ async function inspect(url, schema) {
       migrationsUnreadable = Array.isArray(exists) && exists.length > 0;
       void error;
     }
+    const count = (key) => checks.filter((c) => c[key]).length;
     return {
       fingerprint,
+      databaseOid,
       currentDatabase: current_database,
       currentSchema: current_schema,
       tables: tables.map((r) => r.t),
-      storedFileSchemas: anywhere.map((r) => r.s),
+      checks,
+      // to_regclass is the verdict. The other two are shown beside it as
+      // evidence, never used to declare a table missing.
+      present: checks.filter((c) => c.by_regclass).map((c) => c.name),
+      missing: checks.filter((c) => !c.by_regclass).map((c) => c.name),
+      counts: {
+        expected: checks.length,
+        regclass: count("by_regclass"),
+        pgclass: count("by_pgclass"),
+        infoschema: count("by_infoschema"),
+      },
       migrations,
       migrationsUnreadable,
     };
@@ -238,25 +366,58 @@ function report(label, state, schema) {
     bad(`cannot connect — ${state.error ?? "the inspection returned nothing"}`);
     return false;
   }
-  ok(`connected to database "${state.currentDatabase}"`);
+  ok(`connected to database "${state.currentDatabase}" (oid ${state.databaseOid})`);
+  say(`    ${D}compare that oid in the SQL Editor with:${O}`);
+  say(`    ${D}  SELECT oid, datname FROM pg_database WHERE datname = current_database();${O}`);
   say(`    tables in schema "${schema}": ${state.tables.length}`);
 
-  // The whole picture first: anything the schema declares and the database lacks.
-  const expected = expectedTables();
-  const missing = expected.filter((t) => !state.tables.includes(t));
-  if (expected.length && missing.length === 0) {
-    ok(`all ${expected.length} tables the schema expects are present`);
-  } else if (missing.length) {
-    bad(`${missing.length} of ${expected.length} tables are MISSING: ${missing.join(", ")}`);
-    warn(`a recorded migration whose SQL never ran leaves exactly this state`);
+  // The three methods, side by side, every run. When they agree the line is
+  // reassurance; when they do not it is the diagnosis.
+  const c = state.counts;
+  const agree = c.regclass === c.pgclass && c.pgclass === c.infoschema;
+  say(
+    `    detection: to_regclass ${c.regclass}/${c.expected}` +
+    ` · pg_class ${c.pgclass}/${c.expected}` +
+    ` · information_schema ${c.infoschema}/${c.expected}`,
+  );
+  if (!agree && c.infoschema < c.regclass) {
+    warn(`information_schema sees fewer tables than exist — that is a PRIVILEGE`);
+    say(`      difference, not a missing table. It lists only what this role holds a`);
+    say(`      grant on. The tables are there; to_regclass and pg_class both say so.`);
+    say(`      ${D}An older build of this script trusted information_schema and reported${O}`);
+    say(`      ${D}exactly this as "${c.expected - c.infoschema} tables missing".${O}`);
+  } else if (!agree) {
+    warn(`the three methods disagree in an unexpected way — report the line above`);
   }
 
-  const here = state.storedFileSchemas.includes(schema);
-  if (here) ok(`public.StoredFile EXISTS`);
-  else if (state.storedFileSchemas.length) {
-    bad(`StoredFile is NOT in "${schema}" — it is in: ${state.storedFileSchemas.join(", ")}`);
+  // The whole picture: anything the schema declares and the database lacks.
+  const missing = state.missing;
+  if (c.expected && missing.length === 0) {
+    ok(`all ${c.expected} tables the schema expects are present`);
+  } else if (missing.length) {
+    bad(`${missing.length} of ${c.expected} tables are MISSING: ${missing.join(", ")}`);
+    // "Missing" and "not where you are looking" are different repairs. Say which.
+    const misplaced = state.checks.filter((x) => !x.by_regclass && x.elsewhere);
+    if (misplaced.length) {
+      warn(`${misplaced.length} of them exist under a different name or schema:`);
+      for (const x of misplaced.slice(0, 5)) say(`      ${x.name}  ->  ${x.elsewhere}`);
+      if (misplaced.length > 5) say(`      ${D}… and ${misplaced.length - 5} more${O}`);
+      say(`      ${D}PostgreSQL folds an unquoted identifier to lower case, so${O}`);
+      say(`      ${D}CREATE TABLE User creates "user", which is a different table.${O}`);
+    }
+    if (misplaced.length < missing.length) {
+      warn(`a recorded migration whose SQL never ran leaves exactly this state`);
+    }
+  }
+
+  const storedFile = state.checks.find((x) => x.name === "StoredFile");
+  const here = Boolean(storedFile?.by_regclass);
+  if (here) ok(`${schema}.StoredFile EXISTS`);
+  else if (storedFile?.elsewhere) {
+    bad(`StoredFile is NOT in "${schema}" — it is at: ${storedFile.elsewhere}`);
     warn(`the app looks in "${schema}", so it cannot see it`);
   } else bad(`StoredFile does not exist in this database, in any schema`);
+  void here;
 
   if (!state.migrations && state.migrationsUnreadable) {
     warn(`_prisma_migrations exists but this role cannot read it — history unknown`);
@@ -270,11 +431,13 @@ function report(label, state, schema) {
       say(`      ${m.name}  ${mark}`);
     }
   }
-  return here;
+  // Complete, not "the one table that broke last time is there". A database
+  // holding StoredFile and missing SiteSetting used to pass this check.
+  return c.expected > 0 && missing.length === 0;
 }
 
 // ------------------------------------------------------------------- run
-say(`${B}Database doctor${O} ${D}— credentials are never printed${O}`);
+say(`${B}Database doctor${O} ${D}${VERSION} — credentials are never printed${O}`);
 
 let appUrl = process.env.DATABASE_URL;
 const migUrl = process.env.DIRECT_URL;
@@ -390,13 +553,38 @@ if (!viaApp && FIX && !mig) {
   };
   // Baselining only matters on a database that already has the tables. On an
   // empty one it would claim a migration ran that never did, so skip it there.
+  // (This is the mistake that produced "SiteSetting does not exist" in
+  // production: a migration recorded as applied whose SQL was never run.)
   const state = await inspect(migUrl, mig.schema);
   const hasTables = state && !state.error && state.tables.length > 0;
   const hasHistory = state && !state.error && state.migrations !== null;
 
-  if (hasTables && !hasHistory) {
-    say(`  ${D}database has tables but no history — baselining first${O}`);
+  // "Has some tables" is not "has the tables this migration creates". A
+  // half-populated database passed the old test and got baselined, which
+  // recorded 21 tables as created when only a few were — and left the rest
+  // permanently missing, because migrate deploy then had nothing to apply.
+  const baselineTables = tablesCreatedBy(BASELINE);
+  const absent = baselineTables.filter((t) => !state?.tables?.includes(t));
+  const baselineIsHonest = baselineTables.length > 0 && absent.length === 0;
+
+  if (hasTables && !hasHistory && baselineIsHonest) {
+    say(`  ${D}database already has all ${baselineTables.length} tables of ${BASELINE}${O}`);
+    say(`  ${D}but no history — recording it as applied, then applying the rest${O}`);
     run(["migrate", "resolve", "--applied", BASELINE]);
+  } else if (hasTables && !hasHistory) {
+    // Refuse. Baselining here would hide exactly the tables that are missing.
+    bad(`refusing to baseline: ${absent.length} of the ${baselineTables.length} tables`);
+    say(`    in ${BASELINE} are not in this database:`);
+    say(`      ${absent.slice(0, 8).join(", ")}${absent.length > 8 ? `, … (+${absent.length - 8})` : ""}`);
+    say(`    Recording it as applied would tell Prisma those tables exist, and`);
+    say(`    nothing would ever create them. Create them first, without touching`);
+    say(`    any existing row, by running this in your provider's SQL editor:`);
+    say(`      ${B}prisma/migrations/RUN_IN_SUPABASE_create_missing_tables.sql${O}`);
+    say(`    Every statement in it is guarded, so it skips whatever is already there.`);
+    say(`    Then run this command again.`);
+    printSummary(finalState, appReachable);
+    removeEnvFile();
+    process.exit(1);
   } else if (!hasTables) {
     say(`  ${D}database is empty — applying every migration${O}`);
   } else {
@@ -424,14 +612,15 @@ function printSummary(state, reachable) {
   const l2 = !app || app.invalid ? "indéterminé" : isSupabase ? `oui (${host})` : `non (${host})`;
 
   const expected = expectedTables();
-  const missing = reachable ? expected.filter((t) => !state.tables.includes(t)) : [];
+  const missing = reachable ? state.missing : [];
 
+  const storedFile = reachable ? state.checks.find((x) => x.name === "StoredFile") : null;
   let l3;
   if (!reachable) l3 = "indéterminé — connexion impossible";
-  else l3 = state.storedFileSchemas.includes(app.schema)
+  else l3 = storedFile?.by_regclass
     ? "existe"
-    : state.storedFileSchemas.length
-      ? `n'existe pas dans "${app.schema}" (présente dans : ${state.storedFileSchemas.join(", ")})`
+    : storedFile?.elsewhere
+      ? `n'existe pas dans "${app.schema}" (trouvée à : ${storedFile.elsewhere})`
       : "n'existe pas";
 
   let l4;
@@ -447,8 +636,11 @@ function printSummary(state, reachable) {
       : `${done.length}/${state.migrations.length} appliquées, en attente : ${pending.map((m) => m.name).join(", ")}`;
   }
 
+  // First line, always. Anyone comparing two contradictory outputs needs to
+  // know whether they came from the same script.
+  console.log(`db-doctor : ${VERSION}`);
   console.log(`DATABASE_URL Production : ${usingDirectAsFallback ? "absente du fichier (contrôle fait via DIRECT_URL)" : l1}`);
-  console.log(`Base Production : ${l2}`);
+  console.log(`Base Production : ${l2}${reachable ? ` — base "${state.currentDatabase}" oid ${state.databaseOid}` : ""}`);
   console.log(`public.StoredFile : ${l3}`);
   console.log(`Migrations : ${l4}`);
   console.log(
@@ -458,6 +650,28 @@ function printSummary(state, reachable) {
       : `${missing.length} — ${missing.join(", ")}`
     }`,
   );
+  // Only when the methods disagree. On a healthy database this prints nothing,
+  // so the five lines above stay the five lines the operator expects.
+  if (reachable) {
+    const c = state.counts;
+    if (c.infoschema < c.regclass) {
+      console.log(
+        `Note : information_schema n'en voit que ${c.infoschema}/${c.expected} — ` +
+        `privilèges du rôle, pas des tables absentes (to_regclass ${c.regclass}, pg_class ${c.pgclass}).`,
+      );
+    } else if (c.regclass !== c.pgclass) {
+      console.log(`Note : to_regclass ${c.regclass}, pg_class ${c.pgclass}, information_schema ${c.infoschema} — désaccord inattendu.`);
+    }
+    // One line, not one per table: eighteen identical notes bury the finding.
+    const misplaced = state.checks.filter((y) => !y.by_regclass && y.elsewhere);
+    if (misplaced.length) {
+      const sample = misplaced.slice(0, 3).map((x) => `${x.name} → ${x.elsewhere}`).join(" ; ");
+      console.log(
+        `Note : ${misplaced.length} table(s) existent sous un autre nom ou dans un autre ` +
+        `schéma — ${sample}${misplaced.length > 3 ? " ; …" : ""}`,
+      );
+    }
+  }
 }
 
 // -------------------------------------------------------------- clean up
@@ -480,7 +694,7 @@ function removeEnvFile() {
 // ------------------------------------------------------------------- verdict
 head("Verdict");
 if (viaApp && isLocal) {
-  say(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
+  say(`  ${Y}${B}The LOCAL database at ${app.host} is complete.${O}`);
   say(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
   say(`  connection strings before deciding whether to redeploy.`);
   printSummary(finalState, appReachable);
@@ -488,7 +702,7 @@ if (viaApp && isLocal) {
   process.exit(0);
 }
 if (viaApp) {
-  say(`  ${G}${B}The database the app reads has public.StoredFile.${O}`);
+  say(`  ${G}${B}The database the app reads has every table the schema expects.${O}`);
   say(`  ${D}(host ${app.host} — check this is the host Vercel uses.)${O}`);
   say(`  You can redeploy on Vercel.`);
   say(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
@@ -511,7 +725,7 @@ if (!appReachable) {
   removeEnvFile();
   process.exit(1);
 }
-say(`  ${R}${B}The database the app reads does NOT have public.StoredFile.${O}`);
+say(`  ${R}${B}The database the app reads is MISSING tables the schema expects.${O}`);
 if (same === false) {
   say(`  The two URLs reach different databases. Fix that first: DATABASE_URL and`);
   say(`  DIRECT_URL must be two endpoints of the SAME database — on Supabase, the`);

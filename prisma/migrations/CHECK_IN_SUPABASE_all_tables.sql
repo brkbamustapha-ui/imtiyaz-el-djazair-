@@ -39,9 +39,17 @@ FROM (VALUES
 ) AS t(name)
 ORDER BY "present", "table";
 
---  And the count, for a one-line answer:
+--  And the count, for a one-line answer.
+--
+--  It also prints the database's oid. `npm run db:doctor` prints the same value
+--  for whichever database its connection string reaches. If the two numbers
+--  differ, the two tools are looking at two different databases, and that alone
+--  explains any disagreement about which tables exist — nothing else needs to be
+--  investigated until they match. The oid is not a secret.
 SELECT count(*) FILTER (WHERE to_regclass('public.' || quote_ident(name)) IS NOT NULL) AS "present",
-       count(*) AS "expected"
+       count(*) AS "expected",
+       current_database() AS "database",
+       (SELECT oid FROM pg_database WHERE datname = current_database()) AS "database_oid"
 FROM (VALUES
   ('AuditLog'),
   ('ContentVersion'),

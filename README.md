@@ -49,7 +49,7 @@ immediately; do that, then blank `ADMIN_PASSWORD` in `.env`.
 | `npm run setup` | Generate the client, apply migrations, seed |
 | `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`) — what you run against production |
 | `npm run db:migrate` | Create a new migration after changing `schema.prisma` (development) |
-| `npm run db:doctor` | Report whether the database the app reads has the tables it expects; `-- --fix` repairs it |
+| `npm run db:doctor` | Report whether the database the app reads has the tables it expects; `-- --fix` repairs it, `-- --sql` prints the same check as SQL to paste into a provider's editor |
 | `npm run db:baseline` | One-off: mark the initial migration as already applied on a database built with `db push` |
 | `npm run db:seed` | Re-run the seed (safe to repeat — it never overwrites) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -507,14 +507,44 @@ address different databases, the migration reports complete success and the
 site keeps failing. It looks like a migration problem and is really an address
 problem, and no amount of re-running migrations fixes it.
 
-The four things it separates:
+The five things it separates:
 
 | What the doctor says | What is actually wrong |
 | --- | --- |
 | `StoredFile does not exist … in any schema` | The migration has not been applied here. Run `npm run db:doctor -- --fix`. |
+| `information_schema sees fewer tables than exist` | Nothing. The tables are there. `information_schema` is privilege-filtered by the SQL standard — it lists what the connecting role holds a grant on, not what the schema contains — so a role with rights on four of twenty-two tables reads as eighteen missing. The verdict comes from `to_regclass`, which does not care who is asking. |
+| `N table(s) exist under a different name or schema` | Right database, wrong identifier. PostgreSQL folds an unquoted identifier to lower case, so `CREATE TABLE User` creates `user`, and `"User"` is then genuinely absent. |
 | `NO — these are genuinely two different databases` | The two URLs reach different databases. Fix the values; on Supabase they must be the pooled (6543) and direct (5432) strings of **one** project. Sameness is decided by asking each server for its identity, not by comparing the two strings — Supabase gives one database two hostnames, and comparing text would flag a correct setup. |
 | `StoredFile is NOT in "public" — it is in: X` | Right database, wrong schema. Align the `?schema=` parameter on both URLs. |
 | `public.StoredFile EXISTS` | The database is fine. Check the failing log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. Then check the `[db] connecting to …` line from the same deployment: if its host differs from the one you checked, the runtime is on a different database, most often because the deployment is a Preview build reading Preview variables rather than Production ones. |
+
+### When the doctor and the SQL editor disagree
+
+They should not: the doctor asks `to_regclass`, and so does
+`prisma/migrations/CHECK_IN_SUPABASE_all_tables.sql`. Measured on four
+purpose-built databases — all correct, tables owned by a role with no grants,
+names folded to lower case, tables in another schema — the two agreed every
+time, including where `information_schema` reported four of twenty-two.
+
+So when two answers contradict each other, one of two things is true, and both
+are visible in the output:
+
+1. **Different code.** Every run prints its version on the first line
+   (`db-doctor : v3 — …`). No version line means an old copy of the script; the
+   builds before v3 read `information_schema` and reported a privilege
+   difference as missing tables. `git pull` and run it again.
+2. **Different databases.** Every run prints the database's name and oid
+   (`base "postgres" oid 16389`), and the SQL file prints the same two values.
+   Different oids mean the two tools are not looking at the same database, and
+   nothing else is worth investigating until they match.
+
+To compare like for like without leaving the browser, generate the query from
+the same model list and paste it into the provider's SQL editor — no connection
+string needed:
+
+```bash
+npm run db:doctor -- --sql
+```
 
 `npm run db:doctor -- --fix` baselines only when the database already has tables
 but no history, applies the pending migrations, then re-checks **through
