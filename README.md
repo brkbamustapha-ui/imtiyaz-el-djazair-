@@ -31,7 +31,7 @@ Or step by step:
 ```bash
 npm install
 cp .env.example .env          # then edit .env — see section 2
-npm run setup                 # prisma generate + db push + seed
+npm run setup                 # prisma generate + migrate deploy + seed
 npm run dev                   # http://localhost:3000
 ```
 
@@ -46,7 +46,10 @@ immediately; do that, then blank `ADMIN_PASSWORD` in `.env`.
 | `npm run dev` | Development server with hot reload |
 | `npm run build` | Production build (runs `prisma generate` first) |
 | `npm start` | Serve the production build |
-| `npm run setup` | Generate the client, create the database, seed it |
+| `npm run setup` | Generate the client, apply migrations, seed |
+| `npm run db:deploy` | Apply pending migrations (`prisma migrate deploy`) — what you run against production |
+| `npm run db:migrate` | Create a new migration after changing `schema.prisma` (development) |
+| `npm run db:baseline` | One-off: mark the initial migration as already applied on a database built with `db push` |
 | `npm run db:seed` | Re-run the seed (safe to repeat — it never overwrites) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run typecheck` | TypeScript, no emit |
@@ -61,7 +64,7 @@ Copy `.env.example` to `.env`. Never commit `.env`.
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. **No default** — paste your own. Use the *pooled* string if your provider gives you two. |
-| `DIRECT_URL` | yes | Non-pooled string, used only for schema changes (`prisma db push`). With no pooler, set it to the same value as `DATABASE_URL`. Prisma errors at startup if it is missing. |
+| `DIRECT_URL` | yes | Non-pooled string, used only for schema changes (`prisma migrate deploy`). With no pooler, set it to the same value as `DATABASE_URL`. Prisma errors at startup if it is missing. |
 | `NEXT_PUBLIC_SITE_URL` | yes | Public base URL. Used for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. |
 | `AUTH_SECRET` | yes | 32+ random characters — `openssl rand -base64 48`. Signs session and CSRF tokens. **Change it in production.** |
 | `ADMIN_EMAIL` | first run | Email of the initial Super Admin. |
@@ -317,16 +320,64 @@ pointing at the production database:
 ```bash
 DATABASE_URL="<direct string>" DIRECT_URL="<direct string>" \
 ADMIN_EMAIL="owner@yourdomain.com" ADMIN_PASSWORD="<choose one>" \
-  npx prisma db push && npm run db:seed
+  npm run db:deploy && npm run db:seed
 ```
 
-Use the **direct** string here: `db push` cannot run over a transaction-mode
+Use the **direct** string here: migrations cannot run over a transaction-mode
 pooler. Then clear `ADMIN_PASSWORD` from your shell history — the account exists
 now, and you will be asked to change the password at first login.
 
 **4. Deploy.** Vercel runs `npm run build`, which is
 `prisma generate && next build`. Nothing else is needed: no build-time database
 access, no migration step in the pipeline.
+
+### Repairing a database created with `db push`
+
+Earlier versions of these instructions used `prisma db push`, which applies the
+schema but records nothing. A database set up that way has the tables but no
+migration history, so it silently stops matching the schema the moment a model
+is added — the symptom is `The table "public.X" does not exist in the current
+database` from a deployment that connects fine.
+
+The repair keeps every row. Run it once, from your machine, with the **direct**
+connection string:
+
+```bash
+export DATABASE_URL="<direct string>"
+export DIRECT_URL="$DATABASE_URL"
+
+npm run db:baseline    # records the initial migration as already applied — runs no SQL
+npm run db:deploy      # applies only what is genuinely missing
+```
+
+`db:baseline` writes one row into `_prisma_migrations` saying "the first
+migration is already here"; it executes none of its SQL, so nothing existing is
+touched. `db:deploy` then applies the migrations that follow. Re-running either
+is a no-op.
+
+Skip `db:baseline` on a database that has never been deployed — `npm run
+db:deploy` alone builds it from empty.
+
+Check it landed:
+
+```bash
+npx prisma migrate status
+npx prisma migrate diff --from-url "$DATABASE_URL" \
+  --to-schema-datamodel prisma/schema.prisma --exit-code   # 0 = in sync
+```
+
+### Changing the schema from now on
+
+1. Edit `prisma/schema.prisma`.
+2. `npm run db:migrate` — creates a migration file under `prisma/migrations/`
+   and applies it to your development database.
+3. Commit the migration **with** the schema change. A migration that is not
+   committed does not exist for anyone else.
+4. `npm run db:deploy` against production.
+
+Never run `prisma migrate reset`, or `db push` on a database that has migration
+history — the first drops every table, the second reintroduces the drift this
+section exists to fix.
 
 ### What is still true anywhere you host
 
