@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { db } from "./db";
 
 /* -------------------------------------------------------------------------
  * Writing assistant for the admin.
@@ -13,9 +14,60 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = "claude-opus-5";
 
+/** Where a key pasted into the dashboard is kept. */
+const KEY_SETTING = "aiApiKey";
+
+/**
+ * The API key, from the environment or from the dashboard.
+ *
+ * ANTHROPIC_API_KEY is read first and is the better place for it. But this site
+ * is administered by someone who does not have — and should not need — access
+ * to the hosting provider's environment variables, and a feature that can only
+ * be switched on by editing a deploy config is a feature they do not have. So a
+ * key can also be pasted into Admin -> AI Assistant and is kept in the
+ * database, on the same server side, and read only here.
+ *
+ * It is never returned to the browser: the settings form shows whether a key is
+ * present and its last four characters, never the key itself.
+ */
+async function apiKey(): Promise<string | null> {
+  const fromEnv = process.env.ANTHROPIC_API_KEY?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const row = await db.siteSetting.findUnique({ where: { key: KEY_SETTING } });
+    const stored = row ? (JSON.parse(row.valueJson) as { value?: string }).value : null;
+    return stored?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** No key configured is a normal state, not an error: the rest of the admin works. */
-export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+export async function isAiConfigured(): Promise<boolean> {
+  return Boolean(await apiKey());
+}
+
+/** What the settings card shows: enough to recognise the key, never the key. */
+export async function aiKeyHint(): Promise<{ set: boolean; source: "env" | "database" | null; last4: string }> {
+  const fromEnv = process.env.ANTHROPIC_API_KEY?.trim();
+  if (fromEnv) return { set: true, source: "env", last4: fromEnv.slice(-4) };
+  const key = await apiKey();
+  if (!key) return { set: false, source: null, last4: "" };
+  return { set: true, source: "database", last4: key.slice(-4) };
+}
+
+/** Stores a key pasted into the dashboard. Passing an empty string removes it. */
+export async function saveAiKey(rawKey: string): Promise<void> {
+  const key = rawKey.trim();
+  if (!key) {
+    await db.siteSetting.deleteMany({ where: { key: KEY_SETTING } });
+    return;
+  }
+  await db.siteSetting.upsert({
+    where: { key: KEY_SETTING },
+    create: { key: KEY_SETTING, valueJson: JSON.stringify({ value: key }) },
+    update: { valueJson: JSON.stringify({ value: key }) },
+  });
 }
 
 export const AI_TASKS = [
@@ -92,8 +144,8 @@ export async function runAiTask({
   text: string;
   instruction?: string;
 }): Promise<AiResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-  if (!apiKey) {
+  const key = await apiKey();
+  if (!key) {
     return { ok: false, error: "not_configured" };
   }
 
@@ -106,7 +158,7 @@ export async function runAiTask({
     return { ok: false, error: "missing_instruction" };
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey: key });
 
   try {
     const response = await client.messages.create({

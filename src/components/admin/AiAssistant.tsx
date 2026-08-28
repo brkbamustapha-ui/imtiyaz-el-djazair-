@@ -27,7 +27,13 @@ const PRESETS: Preset[] = [
   { task: "tiktok", label: "TikTok description", hint: "Short description plus hashtags", icon: "tiktok" },
 ];
 
-export function AiAssistant({ configured }: { configured: boolean }) {
+export function AiAssistant({
+  configured,
+  canManageKey = false,
+}: {
+  configured: boolean;
+  canManageKey?: boolean;
+}) {
   const [text, setText] = useState("");
   const [instruction, setInstruction] = useState("");
   const [result, setResult] = useState("");
@@ -78,9 +84,9 @@ export function AiAssistant({ configured }: { configured: boolean }) {
           <Notice tone="warn">
             <p className="font-semibold">The assistant is not connected yet</p>
             <p className="mt-1">
-              Add an <code>ANTHROPIC_API_KEY</code> environment variable to the project on Vercel
-              (Settings → Environment Variables) and redeploy. The key is read on the server only —
-              it never reaches the browser. Everything else in the dashboard works without it.
+              {canManageKey
+                ? "Paste an Anthropic API key in the card above to switch it on — no deploy or hosting settings needed. Everything else in the dashboard works without it."
+                : "Ask a Super Admin to add an Anthropic API key. Everything else in the dashboard works without it."}
             </p>
           </Notice>
         </div>
