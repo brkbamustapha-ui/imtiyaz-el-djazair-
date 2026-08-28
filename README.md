@@ -332,6 +332,30 @@ now, and you will be asked to change the password at first login.
 `prisma generate && next build`. Nothing else is needed: no build-time database
 access, no migration step in the pipeline.
 
+### Checking the database Vercel actually uses
+
+The connection strings live in Vercel, not in this repository. Pull them, check,
+and delete them again — the values never have to be typed out or kept:
+
+```bash
+vercel env pull .env.production --environment=production
+npm run db:doctor -- --from-file .env.production --rm-file
+```
+
+`--from-file` describes **only** that file: anything already in your shell or in
+`.env` is cleared first, so a production `DATABASE_URL` is never reported beside
+a development `DIRECT_URL` as though they disagreed. `--rm-file` overwrites and
+deletes the file afterwards. `DATABASE_URL` alone is enough to answer whether
+the table exists; `DIRECT_URL` is only needed for `--fix`.
+
+> The flag is `--from-file`, not `--env-file`: node claims `--env-file` for
+> itself and fails with a bare `node: <file>: not found` before this script can
+> say anything useful.
+
+`.env.production` is already in `.gitignore`. Nothing in the report prints a
+password, a secret or a connection string — only host, port, database name,
+schema and user.
+
 ### When the site is deployed and still says a table does not exist
 
 Run this first — it answers the question rather than guessing at it:

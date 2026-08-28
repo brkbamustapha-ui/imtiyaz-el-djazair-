@@ -29,22 +29,59 @@ const head = (m) => console.log(`\n${B}${m}${O}`);
 const FIX = process.argv.includes("--fix");
 const BASELINE = "20260827000000_init";
 
+// --from-file reads the file `vercel env pull` writes, so production can be
+// checked without those values ever being typed out or stored in .env.
+//
+// It is NOT called --env-file: node has a flag by that name and swallows it,
+// failing with a bare "node: <file>: not found" before this script ever runs.
+// The old spelling is still accepted — if it reaches us the file exists — but
+// --from-file is the one that behaves the same whether the file is there or not.
+function flagValue(...names) {
+  for (const name of names) {
+    const i = process.argv.indexOf(name);
+    if (i !== -1) return process.argv[i + 1] ?? null;
+  }
+  return null;
+}
+const ENV_FILE = flagValue("--from-file", "--env-file");
+// --rm-env-file deletes it afterwards: production credentials should not sit on
+// a laptop any longer than the check that needed them.
+const RM_ENV_FILE = process.argv.includes("--rm-env-file") || process.argv.includes("--rm-file");
+
 // ---------------------------------------------------------------- env loading
 // Prisma loads .env itself, but this script needs the raw strings to compare
 // them, so read the file directly when the variables are not already exported.
-function loadEnv() {
-  const file = path.join(process.cwd(), ".env");
-  if (!fs.existsSync(file)) return;
+function loadEnv(file, override) {
+  if (!fs.existsSync(file)) return false;
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     const t = line.trim();
     if (!t || t.startsWith("#") || !t.includes("=")) continue;
     const i = t.indexOf("=");
     const k = t.slice(0, i).trim();
     const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, "");
-    if (process.env[k] === undefined) process.env[k] = v;
+    if (override || process.env[k] === undefined) process.env[k] = v;
   }
+  return true;
 }
-loadEnv();
+
+if (ENV_FILE) {
+  const resolved = path.resolve(process.cwd(), ENV_FILE);
+  // Describe ONE environment, never a blend of two. Anything inherited from the
+  // shell or .env is cleared first: a production DATABASE_URL reported next to a
+  // development DIRECT_URL reads as a mismatch that does not exist.
+  delete process.env.DATABASE_URL;
+  delete process.env.DIRECT_URL;
+  // An explicitly named file is the whole point of the run, so it wins over
+  // anything already in the shell or in .env.
+  if (!loadEnv(resolved, true)) {
+    console.log(`\x1b[31mNo such file: ${ENV_FILE}\x1b[0m`);
+    console.log(`Run  vercel env pull ${ENV_FILE} --environment=production  first.`);
+  console.log(`(If you typed --env-file, use --from-file: node claims --env-file for itself.)`);
+    process.exit(1);
+  }
+} else {
+  loadEnv(path.join(process.cwd(), ".env"), false);
+}
 
 /** Split a connection string into its parts. The password is never returned. */
 function describe(raw) {
@@ -124,7 +161,17 @@ async function inspect(url, schema) {
       migrations,
     };
   } catch (error) {
-    return { error: String(error?.message ?? error).split("\n")[0].slice(0, 160) };
+    // Prisma messages start with a blank line, so taking split("\n")[0] yields ""
+    // — falsy, which made a failed connection report as a successful one. Take
+    // the first line that actually has text.
+    const lines = String(error?.message ?? error)
+      .split("\n").map((line) => line.trim()).filter(Boolean);
+    // The first line is Prisma's generic "Invalid ... invocation:" preamble.
+    // The reason — wrong password, no such database, host unreachable — is
+    // further down, and it is the only part worth showing.
+    const message = lines.find((line) => !/^Invalid `prisma|^invocation:?$/i.test(line))
+      ?? lines[0] ?? "unknown error";
+    return { error: message.slice(0, 200) };
   } finally {
     await db.$disconnect().catch(() => undefined);
   }
@@ -133,7 +180,12 @@ async function inspect(url, schema) {
 function report(label, state, schema) {
   head(label);
   if (!state) { bad("not checked"); return false; }
-  if (state.error) { bad(`cannot connect — ${state.error}`); return false; }
+  // Belt and braces: a state without tables is a failed inspection whatever the
+  // error field says, and must never be rendered as a successful connection.
+  if (state.error || !state.tables) {
+    bad(`cannot connect — ${state.error ?? "the inspection returned nothing"}`);
+    return false;
+  }
   ok(`connected to database "${state.currentDatabase}"`);
   console.log(`    tables in schema "${schema}": ${state.tables.length}`);
 
@@ -166,10 +218,20 @@ const mig = describe(migUrl);
 head("Connection strings");
 show("DATABASE_URL", "— the deployed app queries through this", app);
 console.log();
-show("DIRECT_URL", "— migrations run through this", mig);
+if (mig) {
+  show("DIRECT_URL", "— migrations run through this", mig);
+} else {
+  console.log(`  ${B}DIRECT_URL${O} ${D}— migrations run through this${O}`);
+  console.log(`    ${D}not in this file — checking through DATABASE_URL alone, which is${O}`);
+  console.log(`    ${D}enough to answer whether the table exists. --fix would need it.${O}`);
+}
 
-if (!app || !mig || app.invalid || mig.invalid) {
-  console.log(`\n${R}${B}Both DATABASE_URL and DIRECT_URL must be set.${O} Put them in .env, then run this again.`);
+if (!app || app.invalid) {
+  console.log(`\n${R}${B}DATABASE_URL is not set, or is not a valid connection string.${O}`);
+  process.exit(1);
+}
+if (mig?.invalid) {
+  console.log(`\n${R}${B}DIRECT_URL is set but is not a valid connection string.${O}`);
   process.exit(1);
 }
 
@@ -188,10 +250,14 @@ if (isLocal) {
 
 // Ask both servers who they are, rather than guessing from the two URLs.
 const appState = await inspect(appUrl, app.schema);
-const migState = await inspect(migUrl, mig.schema);
+const migState = mig ? await inspect(migUrl, mig.schema) : null;
 
-head("Do they point at the same database?");
 let same = null;
+if (!mig) {
+  // Nothing to compare. Reporting on DATABASE_URL alone still answers the
+  // question that matters: does the database the site reads have the table?
+} else {
+head("Do they point at the same database?");
 if (appState.error || migState.error) {
   warn("cannot tell — one of them did not connect (see below)");
 } else if (appState.fingerprint === migState.fingerprint) {
@@ -211,12 +277,18 @@ if (appState.error || migState.error) {
 if (app.schema !== mig.schema) {
   bad(`schema mismatch: app reads "${app.schema}", migrations write "${mig.schema}"`);
 }
+}
 
+const appReachable = !appState.error && Boolean(appState.tables);
 let viaApp = report(`Through DATABASE_URL — what the deployed site actually sees`, appState, app.schema);
-if (same !== true) report(`Through DIRECT_URL — where migrations land`, migState, mig.schema);
+if (mig && same !== true) report(`Through DIRECT_URL — where migrations land`, migState, mig.schema);
 
 // ------------------------------------------------------------------- repair
-if (!viaApp && FIX) {
+if (!viaApp && FIX && !mig) {
+  head("Repairing");
+  bad("--fix needs DIRECT_URL as well — Prisma refuses to run migrations without it.");
+  console.log(`    Add DIRECT_URL to the file, or pass it on the command line.`);
+} else if (!viaApp && FIX) {
   head("Repairing");
   const run = (args) => {
     console.log(`  ${D}$ npx prisma ${args.join(" ")}${O}`);
@@ -250,12 +322,30 @@ if (!viaApp && FIX) {
   viaApp = report("Result", await inspect(appUrl, app.schema), app.schema);
 }
 
+// -------------------------------------------------------------- clean up
+// Production credentials should not outlive the check that needed them.
+function removeEnvFile() {
+  if (!RM_ENV_FILE || !ENV_FILE) return;
+  const resolved = path.resolve(process.cwd(), ENV_FILE);
+  try {
+    // Overwrite before unlinking so the bytes are not left in a freed block.
+    const size = fs.statSync(resolved).size;
+    fs.writeFileSync(resolved, "\0".repeat(size));
+    fs.unlinkSync(resolved);
+    console.log(`\n  ${G}✓${O} ${ENV_FILE} overwritten and deleted`);
+  } catch (e) {
+    console.log(`\n  ${Y}!${O} could not delete ${ENV_FILE}: ${e.message}`);
+    console.log(`    Delete it yourself — it holds production credentials.`);
+  }
+}
+
 // ------------------------------------------------------------------- verdict
 head("Verdict");
 if (viaApp && isLocal) {
   console.log(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
   console.log(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
   console.log(`  connection strings before deciding whether to redeploy.`);
+  removeEnvFile();
   process.exit(0);
 }
 if (viaApp) {
@@ -264,7 +354,21 @@ if (viaApp) {
   console.log(`  You can redeploy on Vercel.`);
   console.log(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
   console.log(`  ${D}Vercel keeps previous logs, and an old line is not a new failure.${O}`);
+  removeEnvFile();
   process.exit(0);
+}
+if (!appReachable) {
+  console.log(`  ${R}${B}Could not connect through DATABASE_URL at all.${O}`);
+  console.log(`  This is not a migration problem — nothing can be applied or checked`);
+  console.log(`  until the connection works. Common causes, in order:`);
+  console.log(`    - the password in the string is wrong, or was rotated`);
+  console.log(`    - the database name or host is not the one you think`);
+  console.log(`    - the user has no rights on that database`);
+  console.log(`    - the host refuses connections from your network`);
+  console.log(`  Copy the string again from your provider, and check it is the value`);
+  console.log(`  Vercel has for Production.`);
+  removeEnvFile();
+  process.exit(1);
 }
 console.log(`  ${R}${B}The database the app reads does NOT have public.StoredFile.${O}`);
 if (same === false) {
@@ -280,4 +384,5 @@ if (same === false) {
 }
 console.log(`\n  ${D}Also confirm these same two values are set in Vercel -> Settings ->${O}`);
 console.log(`  ${D}Environment Variables for Production, and redeploy after changing them.${O}`);
+removeEnvFile();
 process.exit(1);
