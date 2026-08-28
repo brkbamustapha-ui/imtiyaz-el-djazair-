@@ -266,7 +266,7 @@ export async function requestPasswordResetAction(
   await db.user.update({
     where: { id: user.id },
     data: {
-      resetTokenHash: hashToken(token),
+      resetTokenHash: await hashToken(token),
       resetTokenExpiresAt: new Date(Date.now() + RESET_TTL_MINUTES * 60_000),
     },
   });
@@ -304,7 +304,7 @@ export async function resetPasswordAction(
   if (!strength.ok) return { ok: false, message: strength.problems.join(" ") };
 
   const user = await db.user.findFirst({
-    where: { resetTokenHash: hashToken(token), resetTokenExpiresAt: { gt: new Date() } },
+    where: { resetTokenHash: await hashToken(token), resetTokenExpiresAt: { gt: new Date() } },
   });
   if (!user) return { ok: false, message: "This reset link has expired. Request a new one." };
 

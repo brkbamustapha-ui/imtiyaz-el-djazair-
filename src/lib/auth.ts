@@ -31,7 +31,7 @@ export async function createSession(userId: string): Promise<string> {
   await db.session.create({
     data: {
       userId,
-      tokenHash: hashToken(token),
+      tokenHash: await hashToken(token),
       expiresAt: new Date(Date.now() + SESSION_TTL_MS),
       ip: clientIpFrom(headerList),
       userAgent: (headerList.get("user-agent") ?? "").slice(0, 250),
@@ -54,7 +54,7 @@ export async function destroyCurrentSession(): Promise<void> {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (token) {
     await db.session
-      .deleteMany({ where: { tokenHash: hashToken(token) } })
+      .deleteMany({ where: { tokenHash: await hashToken(token) } })
       .catch(() => undefined);
   }
   cookieStore.delete(SESSION_COOKIE);
@@ -68,7 +68,7 @@ export const getSessionContext = cache(async function getSessionContext(): Promi
 
   const session = await db.session
     .findUnique({
-      where: { tokenHash: hashToken(token) },
+      where: { tokenHash: await hashToken(token) },
       include: { user: true },
     })
     .catch(() => null);

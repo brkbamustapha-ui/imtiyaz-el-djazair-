@@ -22,7 +22,8 @@ export async function readCsrfCookie(): Promise<string | null> {
 export async function verifyCsrf(submittedToken: string | null): Promise<boolean> {
   const cookieToken = await readCsrfCookie();
   if (!cookieToken || !submittedToken) return false;
-  if (!safeEqual(hashToken(cookieToken), hashToken(submittedToken))) return false;
+  const [a, b] = await Promise.all([hashToken(cookieToken), hashToken(submittedToken)]);
+  if (!safeEqual(a, b)) return false;
   return verifySameOrigin();
 }
 
