@@ -84,6 +84,22 @@ async function inspect(url, schema) {
     const [{ current_database, current_schema }] = await db.$queryRawUnsafe(
       "SELECT current_database()::text AS current_database, current_schema()::text AS current_schema",
     );
+    // Identity has to come from the server, not the URL: Supabase gives one
+    // database two hostnames (pooled 6543, direct 5432), and comparing strings
+    // would call that correct setup a mismatch. The cluster's system_identifier
+    // is exact; where it is not readable, database oid + postmaster start time
+    // is a good enough fingerprint and needs no special privilege.
+    let fingerprint;
+    try {
+      const [r] = await db.$queryRawUnsafe("SELECT system_identifier::text AS id FROM pg_control_system()");
+      fingerprint = `sys:${r.id}/${current_database}`;
+    } catch {
+      const [r] = await db.$queryRawUnsafe(
+        `SELECT (SELECT oid FROM pg_database WHERE datname = current_database())::text AS oid,
+                pg_postmaster_start_time()::text AS started`,
+      );
+      fingerprint = `oid:${r.oid}/${r.started}/${current_database}`;
+    }
     const tables = await db.$queryRawUnsafe(
       "SELECT table_name::text AS t FROM information_schema.tables WHERE table_schema = $1 ORDER BY 1", schema,
     );
@@ -100,6 +116,7 @@ async function inspect(url, schema) {
       );
     } catch { /* table absent: this database has no migration history */ }
     return {
+      fingerprint,
       currentDatabase: current_database,
       currentSchema: current_schema,
       tables: tables.map((r) => r.t),
@@ -115,8 +132,8 @@ async function inspect(url, schema) {
 
 function report(label, state, schema) {
   head(label);
-  if (!state) return bad("not checked");
-  if (state.error) return bad(`cannot connect — ${state.error}`);
+  if (!state) { bad("not checked"); return false; }
+  if (state.error) { bad(`cannot connect — ${state.error}`); return false; }
   ok(`connected to database "${state.currentDatabase}"`);
   console.log(`    tables in schema "${schema}": ${state.tables.length}`);
 
@@ -156,21 +173,47 @@ if (!app || !mig || app.invalid || mig.invalid) {
   process.exit(1);
 }
 
+// A local database says nothing about a deployed site. Without this the report
+// can read as a verdict on production while it is describing a laptop.
+const LOCAL = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
+const isLocal = LOCAL.has(app.host);
+if (isLocal) {
+  head("Careful — this is a local database");
+  warn(`DATABASE_URL points at ${app.host}, on this machine.`);
+  console.log(`    Everything below describes that local database and says NOTHING`);
+  console.log(`    about your deployed site. To check the database Vercel uses, run:`);
+  console.log(`      ${B}DATABASE_URL="<your production string>" \\${O}`);
+  console.log(`      ${B}DIRECT_URL="<your production string>" npm run db:doctor${O}`);
+}
+
+// Ask both servers who they are, rather than guessing from the two URLs.
+const appState = await inspect(appUrl, app.schema);
+const migState = await inspect(migUrl, mig.schema);
+
 head("Do they point at the same database?");
-const same = app.identity === mig.identity;
-if (same) ok("yes — same host, port and database name");
-else {
-  bad("NO — they address different databases");
+let same = null;
+if (appState.error || migState.error) {
+  warn("cannot tell — one of them did not connect (see below)");
+} else if (appState.fingerprint === migState.fingerprint) {
+  same = true;
+  ok("yes — both connections reach the same database");
+  if (app.host !== mig.host) {
+    console.log(`    ${D}(different hostnames, one database — normal on Supabase: the pooled${O}`);
+    console.log(`    ${D}endpoint and the direct one are two doors into the same place)${O}`);
+  }
+} else {
+  same = false;
+  bad("NO — these are genuinely two different databases");
   console.log(`    DATABASE_URL -> ${app.host}:${app.port}/${app.database}`);
   console.log(`    DIRECT_URL   -> ${mig.host}:${mig.port}/${mig.database}`);
-  warn("a migration applied through DIRECT_URL will not appear to the app");
+  warn("a migration applied through DIRECT_URL will never appear to the app");
 }
 if (app.schema !== mig.schema) {
   bad(`schema mismatch: app reads "${app.schema}", migrations write "${mig.schema}"`);
 }
 
-let viaApp = report(`Through DATABASE_URL — what the deployed site actually sees`, await inspect(appUrl, app.schema), app.schema);
-if (!same) report(`Through DIRECT_URL — where migrations land`, await inspect(migUrl, mig.schema), mig.schema);
+let viaApp = report(`Through DATABASE_URL — what the deployed site actually sees`, appState, app.schema);
+if (same !== true) report(`Through DIRECT_URL — where migrations land`, migState, mig.schema);
 
 // ------------------------------------------------------------------- repair
 if (!viaApp && FIX) {
@@ -209,16 +252,23 @@ if (!viaApp && FIX) {
 
 // ------------------------------------------------------------------- verdict
 head("Verdict");
+if (viaApp && isLocal) {
+  console.log(`  ${Y}${B}The LOCAL database at ${app.host} has public.StoredFile.${O}`);
+  console.log(`  ${Y}This tells you nothing about production.${O} Re-run with your production`);
+  console.log(`  connection strings before deciding whether to redeploy.`);
+  process.exit(0);
+}
 if (viaApp) {
   console.log(`  ${G}${B}The database the app reads has public.StoredFile.${O}`);
+  console.log(`  ${D}(host ${app.host} — check this is the host Vercel uses.)${O}`);
   console.log(`  You can redeploy on Vercel.`);
   console.log(`  ${D}If the runtime log still shows the old error afterwards, check its timestamp —${O}`);
   console.log(`  ${D}Vercel keeps previous logs, and an old line is not a new failure.${O}`);
   process.exit(0);
 }
 console.log(`  ${R}${B}The database the app reads does NOT have public.StoredFile.${O}`);
-if (!same) {
-  console.log(`  The two URLs address different databases. Fix that first: DATABASE_URL and`);
+if (same === false) {
+  console.log(`  The two URLs reach different databases. Fix that first: DATABASE_URL and`);
   console.log(`  DIRECT_URL must be two endpoints of the SAME database — on Supabase, the`);
   console.log(`  pooled string (port 6543) and the direct one (port 5432) of one project.`);
 } else if (!FIX) {

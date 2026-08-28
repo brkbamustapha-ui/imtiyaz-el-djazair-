@@ -341,9 +341,11 @@ npm run db:doctor
 ```
 
 It prints, with **passwords masked and never logged**, what `DATABASE_URL` and
-`DIRECT_URL` each resolve to, whether they are the same database, and — checked
-through *each* of them — whether `public.StoredFile` is there and what the
-migration history says. Then a verdict.
+`DIRECT_URL` each resolve to, whether they truly reach the same database (asked
+of the servers themselves), and — checked through *each* of them — whether
+`public.StoredFile` is there and what the migration history says. Then a
+verdict. It also refuses to sound confident about production when you point it
+at `localhost`.
 
 That distinction is the whole point. `prisma migrate deploy` runs through
 `DIRECT_URL`; the deployed site queries through `DATABASE_URL`. If those two
@@ -356,7 +358,7 @@ The four things it separates:
 | What the doctor says | What is actually wrong |
 | --- | --- |
 | `StoredFile does not exist … in any schema` | The migration has not been applied here. Run `npm run db:doctor -- --fix`. |
-| `NO — they address different databases` | `DATABASE_URL` and `DIRECT_URL` are two different databases. Fix the values; on Supabase they must be the pooled (port 6543) and direct (port 5432) strings of **one** project. |
+| `NO — these are genuinely two different databases` | The two URLs reach different databases. Fix the values; on Supabase they must be the pooled (6543) and direct (5432) strings of **one** project. Sameness is decided by asking each server for its identity, not by comparing the two strings — Supabase gives one database two hostnames, and comparing text would flag a correct setup. |
 | `StoredFile is NOT in "public" — it is in: X` | Right database, wrong schema. Align the `?schema=` parameter on both URLs. |
 | `public.StoredFile EXISTS` | The database is fine. If Vercel still shows the error, check the log line's **timestamp** — Vercel keeps old logs and a stale line is not a new failure. |
 
