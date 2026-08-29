@@ -5,11 +5,14 @@ import { Icon } from "@/components/ui/Icon";
 import { cn, safeHref, sanitizeRichText } from "@/lib/utils";
 import { t, type LocalizedText } from "@/lib/i18n";
 import { arr, cta, ls, str, SectionShell, type SectionProps } from "./helpers";
+import { PhotoStack, type StackShot } from "@/components/public/PhotoStack";
 
 type Bullet = { text: LocalizedText | string; icon?: string };
 
 export function AboutSection({ data, locale, sectionId }: SectionProps) {
   const image = str(data, "image");
+  // The frame takes either one photograph or several that cycle through it.
+  const shots = arr<StackShot>(data, "images").filter((shot) => shot?.url?.trim());
   const imageRight = str(data, "imagePosition", "right") === "right";
   const bullets = arr<Bullet>(data, "bullets");
   const button = cta(data, "primaryCta");
@@ -71,7 +74,13 @@ export function AboutSection({ data, locale, sectionId }: SectionProps) {
               }}
             />
             <div className="card relative aspect-[4/5] overflow-hidden sm:aspect-[5/4] lg:aspect-[4/5]">
-              {image ? (
+              {shots.length > 0 ? (
+                <PhotoStack
+                  shots={shots}
+                  alt={ls(data, "title", locale)}
+                  sizes="(max-width: 1024px) 100vw, 46vw"
+                />
+              ) : image ? (
                 <Image
                   src={image}
                   alt={ls(data, "title", locale)}

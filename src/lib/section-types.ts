@@ -207,7 +207,21 @@ export const SECTION_TYPES: SectionTypeDefinition[] = [
       { name: "eyebrow", label: "Eyebrow", type: "localizedText", group: "Content" },
       { name: "title", label: "Title", type: "localizedText", group: "Content" },
       { name: "body", label: "Body", type: "localizedRichText", group: "Content" },
-      { name: "image", label: "Image", type: "image", group: "Media" },
+      { name: "image", label: "Image", type: "image", group: "Media", help: "Used when the list below is empty." },
+      {
+        name: "images",
+        label: "Photos",
+        type: "repeater",
+        group: "Media",
+        itemLabelField: "caption",
+        addLabel: "Add a photo",
+        max: 8,
+        help: "Two or more and the frame cycles through them. Overrides the single image above.",
+        fields: [
+          { name: "url", label: "Image", type: "image" },
+          { name: "caption", label: "Caption", type: "text" },
+        ],
+      },
       { name: "imagePosition", label: "Image position", type: "select", options: [{ value: "right", label: "Right" }, { value: "left", label: "Left" }], group: "Media" },
       {
         name: "bullets",
@@ -232,6 +246,7 @@ export const SECTION_TYPES: SectionTypeDefinition[] = [
         ar: "<p>امتياز الجزائر مدرسة ومركز امتحانات يستعد فيه الطلاب لامتحانات اللغة الإنجليزية الدولية في بيئة مهنية وهادئة ومطابقة لظروف الامتحان.</p>",
       },
       image: "",
+      images: [],
       imagePosition: "right",
       bullets: [
         { text: { en: "Exam-accurate test rooms", fr: "Salles conformes aux conditions d'examen", ar: "قاعات مطابقة لظروف الامتحان" }, icon: "shield" },
