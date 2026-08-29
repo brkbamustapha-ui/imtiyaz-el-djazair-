@@ -157,6 +157,25 @@ export const COLLECTIONS: Record<CollectionKey, CollectionDefinition> = {
         ],
       },
       {
+        name: "showType",
+        label: "Show the relationship badge",
+        type: "boolean",
+        help: "Untick to show only the logo and the name. The notice under the section still states that no partner owns or accredits the school.",
+      },
+      {
+        name: "galleryJson",
+        label: "Photos",
+        type: "repeater",
+        itemLabelField: "caption",
+        addLabel: "Add a photo",
+        max: 24,
+        help: "Opened from the partner's card. Leave empty and the card is not clickable.",
+        fields: [
+          { name: "url", label: "Image", type: "image" },
+          { name: "caption", label: "Caption", type: "text" },
+        ],
+      },
+      {
         name: "isVerified",
         label: "Relationship confirmed in writing",
         type: "boolean",

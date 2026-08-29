@@ -160,6 +160,13 @@ model Partner {
   description String   @default("")
   website     String   @default("")
   type        String   @default("PARTNER")
+  /// Whether the relationship badge is drawn on the card. The school asked for
+  /// Manchester City to show as logo and name alone; the section's own notice
+  /// still states that no partner owns or accredits the school.
+  showType    Boolean  @default(true)
+  /// Photographs or artwork the partner supplied, opened from their card.
+  /// JSON: [{ "url": "/assets/...", "caption": "..." }]
+  galleryJson String   @default("[]")
   order       Int      @default(0)
   isActive    Boolean  @default(true)
   /// Set true only when the school has confirmed an official relationship.

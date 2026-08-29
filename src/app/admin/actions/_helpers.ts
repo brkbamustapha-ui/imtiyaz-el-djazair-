@@ -5,6 +5,7 @@ import type { Field } from "@/lib/section-types";
 import { writeLocalized } from "@/lib/localized-field";
 import { LOCALES, type LocalizedText } from "@/lib/i18n";
 import { safeHref } from "@/lib/utils";
+import { stringifyJson } from "@/lib/json";
 
 export type ActionResult = { ok: boolean; message: string; id?: string };
 
@@ -117,5 +118,8 @@ export function coerceForColumn(field: Field, raw: unknown): string | number | b
     return writeLocalized(value as LocalizedText);
   }
   if (typeof value === "number" || typeof value === "boolean") return value;
+  // A repeater yields rows, and these columns are TEXT. Falling through to
+  // String() here would have written "[object Object]" into the database.
+  if (value !== null && typeof value === "object") return stringifyJson(value);
   return String(value ?? "");
 }

@@ -51,14 +51,38 @@ export async function HeroSection({ data, locale, sectionId }: SectionProps) {
       )}
 
       {backgroundType === "image" && str(data, "backgroundImage") && (
-        <Image
-          src={str(data, "backgroundImage")}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
+        // With the copy on one side, the photograph takes the other and fades
+        // into the page rather than lying under the headline. Stretched across
+        // the full width it had to zoom to cover, which cropped the heads off
+        // the school's own banner and put the title across a face. Centred
+        // copy still gets a full-bleed image behind it.
+        <div
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0",
+            align === "center" ? "inset-x-0" : "end-0 w-full sm:w-[74%] lg:w-[62%]",
+          )}
+          style={
+            align === "center"
+              ? undefined
+              : {
+                  maskImage:
+                    "linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.35) 14%, #000 42%)",
+                  WebkitMaskImage:
+                    "linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.35) 14%, #000 42%)",
+                }
+          }
+        >
+          <Image
+            src={str(data, "backgroundImage")}
+            alt=""
+            fill
+            priority
+            sizes={align === "center" ? "100vw" : "(max-width: 640px) 100vw, 70vw"}
+            className="object-cover"
+            style={{ objectPosition: str(data, "backgroundPosition", "center") }}
+          />
+        </div>
       )}
 
       {backgroundType === "video" && str(data, "backgroundVideo") && (
@@ -78,7 +102,28 @@ export async function HeroSection({ data, locale, sectionId }: SectionProps) {
           aria-hidden
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(to bottom, rgb(0 0 0 / ${overlay}), rgb(0 0 0 / ${Math.min(1, overlay + 0.35)}))`,
+            // Tinted with the page's own background rather than black: the
+            // school's artwork is deep blue, and a black scrim over it turned
+            // the blue grey and left a visible seam at the edge of the photo.
+            // With left-aligned copy the tint runs sideways, so the headline
+            // gets a solid ground while the photograph stays clear.
+            background:
+              align === "center"
+                ? `linear-gradient(to bottom, rgb(var(--c-bg-rgb) / ${overlay}), rgb(var(--c-bg-rgb) / ${Math.min(1, overlay + 0.35)}))`
+                : `linear-gradient(to right, rgb(var(--c-bg-rgb) / ${Math.min(1, overlay + 0.45)}) 0%, rgb(var(--c-bg-rgb) / ${overlay * 0.8}) 46%, rgb(var(--c-bg-rgb) / ${overlay * 0.25}) 100%)`,
+          }}
+        />
+      )}
+
+      {/* On a phone the photograph runs the full width, so the sideways tint
+          that carries the headline on a wide screen does nothing for it. This
+          one only exists below the `sm` breakpoint. */}
+      {backgroundType === "image" && str(data, "backgroundImage") && align !== "center" && (
+        <div
+          aria-hidden
+          className="absolute inset-0 sm:hidden"
+          style={{
+            background: `linear-gradient(to bottom, rgb(var(--c-bg-rgb) / 0.35) 0%, rgb(var(--c-bg-rgb) / 0.72) 45%, rgb(var(--c-bg-rgb) / 0.88) 100%)`,
           }}
         />
       )}

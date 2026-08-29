@@ -5,6 +5,8 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/ui/Reveal";
 import { TiltCard } from "@/components/ui/TiltCard";
 import { Icon } from "@/components/ui/Icon";
 import { safeHref } from "@/lib/utils";
+import { parseJson } from "@/lib/json";
+import { PartnerGallery, type PartnerShot } from "@/components/public/PartnerGallery";
 import { ls, str, SectionHeading, SectionShell, type SectionProps } from "./helpers";
 
 /**
@@ -19,6 +21,18 @@ const TYPE_LABEL: Record<string, string> = {
   CERTIFICATION: "Certification",
   ASSOCIATION: "Association",
 };
+
+const GALLERY_LABELS = {
+  en: { open: "see the photos", close: "Close", prev: "Previous photo", next: "Next photo", counter: "{index} of {total}" },
+  fr: { open: "voir les photos", close: "Fermer", prev: "Photo précédente", next: "Photo suivante", counter: "{index} sur {total}" },
+  ar: { open: "شاهد الصور", close: "إغلاق", prev: "الصورة السابقة", next: "الصورة التالية", counter: "{index} من {total}" },
+} as const;
+
+const VIEW_PHOTOS = {
+  en: "View photos",
+  fr: "Voir les photos",
+  ar: "عرض الصور",
+} as const;
 
 export async function PartnersSection({ data, locale, sectionId }: SectionProps) {
   const partners = await getActivePartners(str(data, "filterType", "ALL"));
@@ -70,8 +84,9 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
       />
 
       <RevealGroup className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {partners.map((partner) => (
-          <RevealItem key={partner.id} className="group h-full">
+        {partners.map((partner) => {
+          const shots = parseJson<PartnerShot[]>(partner.galleryJson, []).filter((s) => s?.url);
+          const card = (
             <TiltCard className="h-full">
               <article className="card card-hover flex h-full flex-col p-7">
                 {/* Light plate: partner artwork is mostly dark-on-transparent,
@@ -91,16 +106,24 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
                     className="max-h-full w-auto max-w-full object-contain"
                   />
                 </div>
-                <div className="mt-5 flex items-center gap-2">
-                  <span className="rounded-full border border-[var(--c-border)] px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--c-accent)]">
-                    {TYPE_LABEL[partner.type] ?? partner.type}
-                  </span>
-                </div>
-                <h3 className="h3 mt-3">{partner.name}</h3>
+                {partner.showType && (
+                  <div className="mt-5 flex items-center gap-2">
+                    <span className="rounded-full border border-[var(--c-border)] px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--c-accent)]">
+                      {TYPE_LABEL[partner.type] ?? partner.type}
+                    </span>
+                  </div>
+                )}
+                <h3 className={partner.showType ? "h3 mt-3" : "h3 mt-5"}>{partner.name}</h3>
                 {lt(partner.description, locale) && (
                   <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--c-muted)]">
                     {lt(partner.description, locale)}
                   </p>
+                )}
+                {shots.length > 0 && (
+                  <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--c-accent)]">
+                    <Icon name="expand" size={15} />
+                    {VIEW_PHOTOS[locale as keyof typeof VIEW_PHOTOS] ?? VIEW_PHOTOS.en}
+                  </span>
                 )}
                 {partner.website && (
                   <a
@@ -115,8 +138,24 @@ export async function PartnersSection({ data, locale, sectionId }: SectionProps)
                 )}
               </article>
             </TiltCard>
-          </RevealItem>
-        ))}
+          );
+
+          return (
+            <RevealItem key={partner.id} className="group h-full">
+              {shots.length > 0 ? (
+                <PartnerGallery
+                  name={partner.name}
+                  shots={shots}
+                  labels={GALLERY_LABELS[locale as keyof typeof GALLERY_LABELS] ?? GALLERY_LABELS.en}
+                >
+                  {card}
+                </PartnerGallery>
+              ) : (
+                card
+              )}
+            </RevealItem>
+          );
+        })}
       </RevealGroup>
 
       {disclaimer && (
