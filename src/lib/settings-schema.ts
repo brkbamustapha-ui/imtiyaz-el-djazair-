@@ -267,10 +267,11 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     mapEmbedUrl: "",
     // The school's own Google Maps pin, as published on its Instagram bio.
     mapsLink: "https://maps.app.goo.gl/6JRUTa2CWgjvEnVx9",
+    // The school's own hours: open every day, with Friday running afternoons
+    // only. Editable in Admin -> Settings -> Contact.
     openingHours: [
-      { day: { en: "Sunday – Thursday", fr: "Dimanche – Jeudi", ar: "الأحد – الخميس" }, hours: "08:30 – 18:00" },
-      { day: { en: "Saturday", fr: "Samedi", ar: "السبت" }, hours: "09:00 – 15:00" },
-      { day: { en: "Friday", fr: "Vendredi", ar: "الجمعة" }, hours: "Closed" },
+      { day: { en: "Saturday – Thursday", fr: "Samedi – Jeudi", ar: "السبت – الخميس" }, hours: "09:30 – 20:00" },
+      { day: { en: "Friday", fr: "Vendredi", ar: "الجمعة" }, hours: "15:00 – 19:00" },
     ],
   },
   social: {

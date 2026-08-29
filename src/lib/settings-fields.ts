@@ -67,7 +67,7 @@ export const CONTACT_FIELDS: Field[] = [
     max: 10,
     fields: [
       { name: "day", label: "Day(s)", type: "localizedText" },
-      { name: "hours", label: "Hours", type: "text", placeholder: "08:30 – 18:00" },
+      { name: "hours", label: "Hours", type: "text", placeholder: "09:30 – 20:00" },
     ],
   },
 ];
