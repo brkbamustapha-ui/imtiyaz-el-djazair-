@@ -10,11 +10,16 @@ import { metadataFromPageSeo, parsePageSeo, siteUrl } from "@/lib/seo";
 import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [page, settings] = await Promise.all([getPageMeta("home"), getAllSettings()]);
+  const [page, settings, logos] = await Promise.all([
+    getPageMeta("home"),
+    getAllSettings(),
+    getBrandLogos(),
+  ]);
   return metadataFromPageSeo(parsePageSeo(page?.seoJson), {
     title: settings.seo.defaultTitle,
     description: settings.seo.defaultDescription,
     path: "/",
+    ogImage: logos.ogImage,
   });
 }
 

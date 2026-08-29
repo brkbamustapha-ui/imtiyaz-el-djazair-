@@ -88,9 +88,10 @@ export default async function SeoPage() {
             <li className="p-4">
               <p className="text-[0.8rem] text-[var(--a-muted)]">
                 Schema.org data (organisation, website, articles and events) is emitted on every
-                relevant page. Canonical URLs are built from{" "}
-                <code className="a-mono">NEXT_PUBLIC_SITE_URL</code>, currently{" "}
-                <code className="a-mono">{siteUrl("/")}</code>.
+                relevant page. Canonical URLs, the sitemap and the share previews are all built on{" "}
+                <code className="a-mono">{siteUrl("/")}</code> — the deployment&rsquo;s own domain
+                unless <code className="a-mono">NEXT_PUBLIC_SITE_URL</code> names a real one. Set
+                that variable once the school has its own domain.
               </p>
             </li>
           </ul>

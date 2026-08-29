@@ -18,6 +18,7 @@ import {
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { logAdminAction } from "@/lib/audit";
 import { verifySameOrigin } from "@/lib/csrf";
+import { siteUrl } from "@/lib/seo";
 
 export type ActionState = { ok?: boolean; message?: string } | null;
 
@@ -283,7 +284,7 @@ export async function requestPasswordResetAction(
   // email was sent, the link is written to the server log so the Super Admin
   // can pass it on. Wire up an SMTP/provider call here to email it instead.
   console.info(
-    `[password-reset] ${email} -> ${process.env.NEXT_PUBLIC_SITE_URL ?? ""}${link} (valid ${RESET_TTL_MINUTES} min)`,
+    `[password-reset] ${email} -> ${siteUrl(link)} (valid ${RESET_TTL_MINUTES} min)`,
   );
 
   return { ok: true, message: confirmation };

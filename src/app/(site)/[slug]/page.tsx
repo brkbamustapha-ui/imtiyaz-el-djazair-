@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SectionRenderer } from "@/components/sections/SectionRenderer";
 import { getPageMeta, getPageSections } from "@/server/content";
 import { getAllSettings } from "@/lib/settings";
+import { getBrandLogos } from "@/lib/brand";
 import { getLocale } from "@/lib/locale";
 import { metadataFromPageSeo, parsePageSeo } from "@/lib/seo";
 
@@ -10,13 +11,18 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const [page, settings] = await Promise.all([getPageMeta(slug), getAllSettings()]);
+  const [page, settings, logos] = await Promise.all([
+    getPageMeta(slug),
+    getAllSettings(),
+    getBrandLogos(),
+  ]);
   if (!page) return { title: "Page not found" };
 
   return metadataFromPageSeo(parsePageSeo(page.seoJson), {
     title: page.title,
     description: settings.seo.defaultDescription,
     path: `/${slug}`,
+    ogImage: logos.ogImage,
   });
 }
 

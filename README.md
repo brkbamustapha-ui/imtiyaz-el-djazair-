@@ -67,7 +67,7 @@ Copy `.env.example` to `.env`. Never commit `.env`.
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. **No default** — paste your own. Use the *pooled* string if your provider gives you two. |
 | `DIRECT_URL` | yes | Non-pooled string, used only for schema changes (`prisma migrate deploy`). With no pooler, set it to the same value as `DATABASE_URL`. Prisma errors at startup if it is missing. |
-| `NEXT_PUBLIC_SITE_URL` | yes | Public base URL. Used for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. |
+| `NEXT_PUBLIC_SITE_URL` | recommended | Public base URL for canonical URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. On a deployed site a `localhost` value is ignored in favour of the deployment's own domain, so nothing points at an unreachable host while a real domain is still pending. |
 | `AUTH_SECRET` | yes | 32+ random characters — `openssl rand -base64 48`. Signs session and CSRF tokens. **Change it in production.** |
 | `ADMIN_EMAIL` | first run | Email of the initial Super Admin. |
 | `ADMIN_PASSWORD` | first run | Only read by the seed script. Hashed with scrypt before storage — never written in clear text, never sent to the browser, never logged. **Blank it after the first login.** |
@@ -308,7 +308,7 @@ Variables*, for Production (and Preview, if you use it):
 | `DATABASE_URL` | the **pooled** connection string |
 | `DIRECT_URL` | the **direct** connection string (same value if there is only one) |
 | `AUTH_SECRET` | a fresh 32+ character random value — `openssl rand -base64 48` |
-| `NEXT_PUBLIC_SITE_URL` | your real domain, e.g. `https://imtiyazeldjazair.com` |
+| `NEXT_PUBLIC_SITE_URL` | your real domain, e.g. `https://imtiyazeldjazair.com` (until then the deployment's own domain is used) |
 | `MAX_UPLOAD_MB` | optional, default `8` |
 | `ALLOW_CUSTOM_SCRIPTS` | `false` |
 | `SEED_DEMO_CONTENT` | `false` once you have your own content |
@@ -679,7 +679,7 @@ section exists to fix.
 ### Before you go live
 
 1. `AUTH_SECRET` — a fresh random value, not the one from `.env.example`.
-2. `NEXT_PUBLIC_SITE_URL` — the real domain.
+2. `NEXT_PUBLIC_SITE_URL` — the real domain, once the school has one.
 3. `ADMIN_PASSWORD` — blank everywhere once the owner has signed in.
 4. `ALLOW_CUSTOM_SCRIPTS=false` unless the owner needs it.
 5. In *Admin → SEO*, turn **indexing** on when the site is ready (it also

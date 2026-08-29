@@ -6,10 +6,11 @@ import { appearanceToCssVars, googleFontsHref } from "@/lib/theme";
 import { getLocale } from "@/lib/locale";
 import { LOCALE_META } from "@/lib/i18n";
 import { t } from "@/lib/i18n";
+import { siteBaseUrl } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [{ seo, general }, logos] = await Promise.all([getAllSettings(), getBrandLogos()]);
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const base = siteBaseUrl();
   const shareImage = logos.ogImage ?? "/assets/social-card.png";
   return {
     metadataBase: new URL(base),

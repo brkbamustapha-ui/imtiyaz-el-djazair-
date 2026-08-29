@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: post.title,
     description: post.excerpt || truncate(post.content.replace(/<[^>]+>/g, " "), 155),
     path: `/news/${post.slug}`,
+    ogImage: post.coverUrl,
   });
 }
 
