@@ -63,6 +63,7 @@ export async function ContactSection({ data, locale, sectionId }: SectionProps) 
   // when the matching setting holds a link, so nothing ever points nowhere.
   const links = (
     [
+      ["facebook", social.facebook, "Facebook"],
       ["instagram", social.instagram, "Instagram"],
       ["tiktok", social.tiktok, "TikTok"],
       ["whatsapp", social.whatsapp, "WhatsApp"],

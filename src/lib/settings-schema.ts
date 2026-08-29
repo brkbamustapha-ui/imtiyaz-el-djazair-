@@ -62,6 +62,7 @@ export function telHref(number: string): string {
 }
 
 export type SocialSettings = {
+  facebook: string;
   instagram: string;
   tiktok: string;
   whatsapp: string;
@@ -275,10 +276,11 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     ],
   },
   social: {
-    // Only the networks the school actually uses. Facebook, YouTube, LinkedIn
-    // and X were removed at the owner's request — the school has no presence
-    // there, and a dashboard field for an account that will never exist is
-    // just a place to make a mistake.
+    // Only the networks the school actually uses. YouTube, LinkedIn and X were
+    // removed at the owner's request — the school has no presence there, and a
+    // dashboard field for an account that will never exist is just a place to
+    // make a mistake.
+    facebook: "https://www.facebook.com/share/1DycxGQS9y/",
     instagram: "https://www.instagram.com/imtiyaz_el_djazair_officiel",
     tiktok: "https://www.tiktok.com/@imtiyazaldjazair",
     whatsapp: "",
