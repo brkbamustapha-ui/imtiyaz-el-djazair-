@@ -117,7 +117,9 @@ export const SECTION_TYPES: SectionTypeDefinition[] = [
     ],
     defaults: {
       badge: { en: "British Council IELTS Partnership Programme member", fr: "Membre du programme de partenariat IELTS du British Council", ar: "عضو في برنامج شراكة الآيلتس مع المجلس الثقافي البريطاني" },
-      title: { en: "IMTIYAZ EL DJAZAIR", fr: "IMTIYAZ EL DJAZAIR", ar: "امتياز الجزائر" },
+      // The school's name is already on the logo in the header; repeating it as
+      // the headline said nothing. The banner's own wording goes here instead.
+      title: { en: "ENGLISH LANGUAGE CENTER", fr: "CENTRE DE LANGUE ANGLAISE", ar: "مركز اللغة الإنجليزية" },
       subtitle: { en: "School & Exam Center", fr: "École et Centre d'Examen", ar: "مدرسة ومركز امتحانات" },
       description: {
         en: "Excellence in Education. Confidence for Your Future.",
@@ -129,7 +131,7 @@ export const SECTION_TYPES: SectionTypeDefinition[] = [
       backgroundType: "3d",
       backgroundImage: "",
       backgroundVideo: "",
-      backgroundColor: "#070b14",
+      backgroundColor: "#233d74",
       overlayOpacity: 0.35,
       particleIntensity: 0.7,
       align: "left",

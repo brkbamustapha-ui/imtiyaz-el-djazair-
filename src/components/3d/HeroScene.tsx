@@ -16,6 +16,8 @@ type SceneProps = {
   intensity: number;
   primary: string;
   accent: string;
+  /** The page background, so the scene fades into it instead of into black. */
+  background: string;
   /** Horizontal offset of the campus, in world units (0 recentres it). */
   offsetX: number;
 };
@@ -168,7 +170,14 @@ function PointerCamera({ strength }: { strength: number }) {
   return null;
 }
 
-export default function HeroScene({ tier, intensity, primary, accent, offsetX }: SceneProps) {
+export default function HeroScene({
+  tier,
+  intensity,
+  primary,
+  accent,
+  background,
+  offsetX,
+}: SceneProps) {
   const particleCount = Math.round(
     (tier === "high" ? 1400 : tier === "medium" ? 620 : 260) * Math.max(0.25, intensity),
   );
@@ -183,7 +192,7 @@ export default function HeroScene({ tier, intensity, primary, accent, offsetX }:
       // Pause rendering when the canvas is off-screen or the tab is hidden.
       frameloop="always"
     >
-      <fog attach="fog" args={["#070b14", 15, 38]} />
+      <fog attach="fog" args={[background, 15, 38]} />
       <ambientLight intensity={0.45} />
       <directionalLight position={[6, 10, 6]} intensity={0.95} color={primary} />
       <directionalLight position={[-8, 4, -6]} intensity={0.7} color={accent} />

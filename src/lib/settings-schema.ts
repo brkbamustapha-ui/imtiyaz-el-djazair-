@@ -147,6 +147,25 @@ export const THEME_PRESETS: Record<
   string,
   { label: string; colors: AppearanceSettings["colors"] }
 > = {
+  // The school's own colours, read off its logo and its English Language
+  // Centre banner: the deep blue those are printed on, and the green the
+  // banner sets its headline in. The blue is sampled from the logo file in
+  // /public/assets/source, not guessed.
+  "imtiyaz-brand": {
+    label: "Imtiyaz Brand",
+    colors: {
+      background: "#233d74",
+      surface: "#2a4784",
+      surfaceElevated: "#325091",
+      text: "#ffffff",
+      textMuted: "#b7c6e8",
+      primary: "#17aee0",
+      primaryDark: "#1a2e57",
+      accent: "#00e68c",
+      accentSoft: "#7df3c5",
+      border: "#3b5896",
+    },
+  },
   "luxury-gold": {
     label: "Luxury Gold",
     colors: {
@@ -235,7 +254,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     },
     // Empty by default: the logo is whatever image file the school supplies,
     // either uploaded from the dashboard or dropped into /public/assets/logo.
-    logoUrl: "",
+    logoUrl: "/assets/logo/logo-white.png",
     logoDarkUrl: "",
     faviconUrl: "",
     ogImageUrl: "",
@@ -286,8 +305,8 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     whatsapp: "",
   },
   appearance: {
-    preset: "luxury-gold",
-    colors: THEME_PRESETS["luxury-gold"].colors,
+    preset: "imtiyaz-brand",
+    colors: THEME_PRESETS["imtiyaz-brand"].colors,
     fontHeading: "Sora",
     fontBody: "Inter",
     headingScale: 1,

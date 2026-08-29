@@ -30,7 +30,7 @@ export async function HeroSection({ data, locale, sectionId }: SectionProps) {
       className="relative isolate flex min-h-[92svh] items-center overflow-hidden pb-20 pt-32 md:min-h-screen md:pb-24 md:pt-36"
       style={
         backgroundType === "color"
-          ? { backgroundColor: str(data, "backgroundColor", "#070b14") }
+          ? { backgroundColor: str(data, "backgroundColor", "#233d74") }
           : backgroundType === "gradient"
             ? {
                 backgroundImage:
@@ -45,6 +45,7 @@ export async function HeroSection({ data, locale, sectionId }: SectionProps) {
           intensity={intensity}
           primary={appearance.colors.primary}
           accent={appearance.colors.accent}
+          background={appearance.colors.background}
           align={align === "center" ? "center" : "left"}
         />
       )}

@@ -63,12 +63,14 @@ export function HeroBackground({
   intensity,
   primary,
   accent,
+  background,
   align = "left",
 }: {
   enabled: boolean;
   intensity: number;
   primary: string;
   accent: string;
+  background: string;
   /** Where the hero copy sits, so the 3D composition moves out of its way. */
   align?: "left" | "center";
 }) {
@@ -112,6 +114,7 @@ export function HeroBackground({
             intensity={intensity}
             primary={primary}
             accent={accent}
+            background={background}
             offsetX={offsetX}
           />
         </div>
@@ -121,8 +124,8 @@ export function HeroBackground({
         aria-hidden
         className={
           align === "center"
-            ? "absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_45%,rgb(7_11_20/0.82),transparent_75%)]"
-            : "absolute inset-0 bg-[linear-gradient(100deg,var(--c-bg)_2%,rgb(7_11_20/0.86)_34%,rgb(7_11_20/0.35)_62%,transparent_88%)]"
+            ? "absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_45%,rgb(var(--c-bg-rgb)/0.82),transparent_75%)]"
+            : "absolute inset-0 bg-[linear-gradient(100deg,var(--c-bg)_2%,rgb(var(--c-bg-rgb)/0.86)_34%,rgb(var(--c-bg-rgb)/0.35)_62%,transparent_88%)]"
         }
       />
     </div>

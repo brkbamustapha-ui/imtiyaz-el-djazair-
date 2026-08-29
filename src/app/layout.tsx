@@ -47,12 +47,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  themeColor: "#070b14",
-};
+// The browser paints its own chrome with this on mobile, so it has to track
+// the theme rather than sit on a colour the site no longer uses.
+export async function generateViewport(): Promise<Viewport> {
+  const { appearance } = await getAllSettings();
+  return {
+    width: "device-width",
+    initialScale: 1,
+    viewportFit: "cover",
+    themeColor: appearance.colors.background,
+  };
+}
 
 export default async function RootLayout({
   children,

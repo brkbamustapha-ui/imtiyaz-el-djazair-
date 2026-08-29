@@ -43,16 +43,16 @@ export function isLightTheme(appearance: AppearanceSettings): boolean {
 export function appearanceToCssVars(appearance: AppearanceSettings): string {
   const c = appearance.colors;
   const fallback = {
-    background: "#070b14",
-    surface: "#0d1424",
-    surfaceElevated: "#131c30",
-    text: "#f4f6fb",
-    textMuted: "#9aa7bd",
+    background: "#233d74",
+    surface: "#2a4784",
+    surfaceElevated: "#325091",
+    text: "#ffffff",
+    textMuted: "#b7c6e8",
     primary: "#17aee0",
-    primaryDark: "#233e72",
-    accent: "#d4af37",
-    accentSoft: "#f0dc9a",
-    border: "#1e2a44",
+    primaryDark: "#1a2e57",
+    accent: "#00e68c",
+    accentSoft: "#7df3c5",
+    border: "#3b5896",
   };
 
   const entries: Record<string, string> = {
@@ -85,9 +85,11 @@ export function appearanceToCssVars(appearance: AppearanceSettings): string {
           : "var(--radius-sm)",
   };
 
+  const [br, bg, bb] = hexToRgb(safeColor(c.background, fallback.background));
   const [pr, pg, pb] = hexToRgb(safeColor(c.primary, fallback.primary));
   const [ar, ag, ab] = hexToRgb(safeColor(c.accent, fallback.accent));
   const [tr, tg, tb] = hexToRgb(safeColor(c.text, fallback.text));
+  entries["--c-bg-rgb"] = `${br} ${bg} ${bb}`;
   entries["--c-primary-rgb"] = `${pr} ${pg} ${pb}`;
   entries["--c-accent-rgb"] = `${ar} ${ag} ${ab}`;
   entries["--c-text-rgb"] = `${tr} ${tg} ${tb}`;

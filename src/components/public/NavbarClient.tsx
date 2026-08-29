@@ -72,7 +72,7 @@ export function NavbarClient({
           className={cn(
             "flex items-center justify-between gap-4 rounded-[var(--radius)] px-4 py-2.5 transition-all duration-500 md:px-5",
             scrolled
-              ? "glass shadow-[0_18px_44px_-30px_rgba(0,0,0,0.9)]"
+              ? "glass-bar shadow-[0_18px_44px_-30px_rgba(0,0,0,0.9)]"
               : "border border-transparent bg-transparent",
           )}
         >
