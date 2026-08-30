@@ -37,10 +37,23 @@ export function SiteLogo({
   showWordmark?: boolean;
   priority?: boolean;
 }) {
+  // The name is set in two lines, the way the school's own signage stacks it:
+  // the first word above, the rest below. Splitting on the first space rather
+  // than hard-coding "Imtiyaz" keeps this working if the name is ever edited
+  // in the admin, and a one-word name simply renders one line.
+  const [firstWord, ...restOfName] = siteName.trim().split(/\s+/);
+  const secondLine = restOfName.join(" ");
+
   const wordmark = showWordmark ? (
     <span className="flex flex-col leading-none">
-      <span className="font-display text-[0.94rem] font-extrabold uppercase tracking-[0.13em] text-[var(--c-text)] md:text-[1.02rem]">
-        {siteName}
+      <span className="font-display text-[0.94rem] font-extrabold uppercase leading-[1.12] tracking-[0.13em] text-[var(--c-text)] md:text-[1.02rem]">
+        {firstWord}
+        {secondLine && (
+          <>
+            <br />
+            {secondLine}
+          </>
+        )}
       </span>
       {tagline && (
         <span className="mt-1 text-[0.56rem] font-medium uppercase tracking-[0.26em] text-[var(--c-muted)] md:text-[0.62rem]">
