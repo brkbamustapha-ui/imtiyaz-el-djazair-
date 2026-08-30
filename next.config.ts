@@ -19,6 +19,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Self-contained build for hosts where you run `node server.js` yourself —
+  // a cPanel account, a VPS. It emits .next/standalone with only the modules
+  // the server actually reaches, which on this project is the difference
+  // between ~29,000 files and a few thousand: shared hosting counts inodes,
+  // and a full node_modules can exhaust the quota on its own.
+  //
+  // Off by default so the current host, which builds and runs the app itself,
+  // is unaffected. `npm run build:cpanel` turns it on.
+  output: process.env.BUILD_STANDALONE === "true" ? "standalone" : undefined,
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
